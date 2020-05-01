@@ -10,7 +10,6 @@ struct Coulomb <: Interaction end
 
 
 
-
 function blockMatrix(blocks::Array{Array})
     blockStack = vcat(vec(blocks)...)
     stackSize = size(blockStack)[1]
@@ -22,23 +21,10 @@ function blockMatrix(blocks::Array{Array})
 end
 
 
-# short range radial force constant matrices
-function φ(bondᵢⱼ::Vector, A::Real, B::Real)
-        ϕ = zeros(3, 3)
-        bondLength = norm(bondᵢⱼ)
-        for xμ in 1:3
-                for xν in 1:3
-                        ϕ[xμ, xν] = (A-B)*bondᵢⱼ[xμ]*bondᵢⱼ[xν] / bondLength^2
-                        if xμ == xν
-                                ϕ[xμ, xν] += B
-                        end
-                end
-        end
-        return ϕ
-end
+# Blocks
 
 
-
+# 𝔻_block method for shortRange interactions in bulk models
 function 𝔻_block(i::Int, j::Int, k::Vector, crystal::Crystal, couplings::Array,
                   interactionKey::ShortRange)
 
@@ -47,18 +33,32 @@ function 𝔻_block(i::Int, j::Int, k::Vector, crystal::Crystal, couplings::Arra
         atomⱼ = crystal.unitCell[j][1]
         neighborList = crystal.neighbors[atomᵢ]
 
-        block = zeros(3, 3)
+        ℝᵢⱼ = zeros(3, 3)
         for neighbor in neighborList
                 if neighbor[1] == atomⱼ
                         bondᵢⱼ = neighbor[2]
                         FCM = φ(bondᵢⱼ, A, B)
-                        block += FCM*exp(im*dot(k, bondᵢⱼ))
+                        ℝᵢⱼ += FCM*exp(im*dot(k, bondᵢⱼ))
                 end
         end
-        return block
+        return ℝᵢⱼ
+end
+# 𝔻_block method for Coulomb interactions in bulk crystals
+function 𝔻_block(i::Int, j::Int, k::Vector, crystal::Crystal, charges::Array,
+                  interactionKey::Coulomb)
+        rᵢ = crystal.unitCell[i][2]
+        rⱼ = crystal.unitCell[j][2]
+        Δ = rⱼ - rᵢ
+        Cᵢⱼ = ewald(k, Δ, crystal, charges)
+
 end
 
 
+
+# Self Terms
+
+
+# 𝔻_selfblock method for short-range interactions in the bulk
 function 𝔻_selfblock(i::Int, crystal::Crystal, couplings::Array,
         interactionKey::ShortRange)
 
@@ -72,7 +72,14 @@ end
 
 
 
-function 𝔻_contribution(k::Vector, crystal::Crystal, couplings::Array, interactionKey::Interaction)
+
+# Full dynamical matrix
+
+
+
+# Construct the full contribution to the dynamical matrix for given interaction type
+function 𝔻_contribution(k::Vector, crystal::Crystal, couplings::Array,
+                         interactionKey::Interaction)
 
         atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
@@ -87,7 +94,6 @@ function 𝔻_contribution(k::Vector, crystal::Crystal, couplings::Array, intera
         matrix = blockMatrix(blocks)
         return matrix
 end
-
 
 function 𝔻(k::Vector, crystal::Crystal, couplings::Array)
         interactionKey = ShortRange()

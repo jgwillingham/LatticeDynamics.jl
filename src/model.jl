@@ -13,7 +13,6 @@ function buildLine(startPoint::Vector, endPoint::Vector, pointDensity::Real)
         return line
 end
 
-
 function buildPath(qMarkers::Array, pointDensity::Real)
         qPathParts = Float64[0.0]
         firstLine = buildLine(qMarkers[1], qMarkers[2], pointDensity)
@@ -31,6 +30,7 @@ end
 
 
 
+
 function getDispersion(qPath::Array, crystal::Crystal, couplings::Array)
         eigenValues = []
         for q in qPath
@@ -41,6 +41,8 @@ function getDispersion(qPath::Array, crystal::Crystal, couplings::Array)
         end
         return eigenValues
 end
+
+
 
 
 function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[])
