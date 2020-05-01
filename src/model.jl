@@ -34,8 +34,8 @@ end
 function getDispersion(qPath::Array, crystal::Crystal, couplings::Array)
         eigenValues = []
         for q in qPath
-                𝔻 = 𝔻ₖ(q, crystal, couplings)
-                vals = map( x -> round(x, digits=10) , eigvals(𝔻))
+                𝔻ₖ = 𝔻(q, crystal, couplings)
+                vals = map( x -> round(x, digits=10) , eigvals(𝔻ₖ))
                 freq = .√vals./(2π)
                 append!(eigenValues, [freq])
         end

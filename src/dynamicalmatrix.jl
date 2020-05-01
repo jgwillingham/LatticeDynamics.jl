@@ -1,8 +1,7 @@
 
 
 
-using LinearAlgebra: norm
-
+using LinearAlgebra: norm, dot
 
 
 abstract type Interaction end
@@ -73,7 +72,7 @@ end
 
 
 
-function 𝔻(k::Vector, crystal::Crystal, couplings::Array, interactionKey::Interaction)
+function 𝔻_contribution(k::Vector, crystal::Crystal, couplings::Array, interactionKey::Interaction)
 
         atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
@@ -87,4 +86,11 @@ function 𝔻(k::Vector, crystal::Crystal, couplings::Array, interactionKey::Int
         end
         matrix = blockMatrix(blocks)
         return matrix
+end
+
+
+function 𝔻(k::Vector, crystal::Crystal, couplings::Array)
+        interactionKey = ShortRange()
+        𝔻ₖ = 𝔻_contribution(k, crystal, couplings, interactionKey)
+        return 𝔻ₖ
 end

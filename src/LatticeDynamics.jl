@@ -3,8 +3,8 @@
 module LatticeDynamics
 
 include("structure.jl")
-include("model.jl")
 include("dynamicalmatrix.jl")
+include("model.jl")
 
 
 export Crystal, getNeighbors!,
