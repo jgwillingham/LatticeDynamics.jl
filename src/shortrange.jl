@@ -1,19 +1,18 @@
 
 
 
-using LinearAlgebra: norm
+using LinearAlgebra: norm, transpose
+
+# outer product of two vectors
+function outer(v1::Vector, v2::Vector)
+        return v1.*transpose(v2)
+end
+
 
 # short range radial force constant matrices
 function φ(bondᵢⱼ::Vector, A::Real, B::Real)
-        ϕ = zeros(3, 3)
         bondLength = norm(bondᵢⱼ)
-        for xμ in 1:3
-                for xν in 1:3
-                        ϕ[xμ, xν] = (A-B)*bondᵢⱼ[xμ]*bondᵢⱼ[xν] / bondLength^2
-                        if xμ == xν
-                                ϕ[xμ, xν] += B
-                        end
-                end
-        end
+        ϕ = (A-B)*outer(bondᵢⱼ, bondᵢⱼ) / bondLength^2
+        ϕ += B * Matrix(I,3,3)
         return ϕ
 end

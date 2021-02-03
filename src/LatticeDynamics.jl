@@ -4,12 +4,12 @@ module LatticeDynamics
 
 include("structure.jl")
 include("shortrange.jl")
-include("ewald.jl")
+include("coulomb.jl")
 include("dynamicalmatrix.jl")
 include("model.jl")
 
 
-export Crystal, getNeighbors!,
+export Crystal, Slab, getNeighbors!,
        buildPath, getDispersion, plotDispersion
 
 end #module

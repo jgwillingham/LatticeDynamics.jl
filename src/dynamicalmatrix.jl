@@ -50,7 +50,6 @@ function 𝔻_block(i::Int, j::Int, k::Vector, crystal::Crystal, charges::Array,
         rⱼ = crystal.unitCell[j][2]
         Δ = rⱼ - rᵢ
         Cᵢⱼ = ewald(k, Δ, crystal, charges)
-
 end
 
 
