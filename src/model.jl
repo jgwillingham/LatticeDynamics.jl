@@ -13,6 +13,7 @@ function buildLine(startPoint::Vector, endPoint::Vector, pointDensity::Real)
         return line
 end
 
+
 function buildPath(qMarkers::Array, pointDensity::Real)
         qPathParts = Float64[0.0]
         firstLine = buildLine(qMarkers[1], qMarkers[2], pointDensity)
@@ -28,21 +29,27 @@ function buildPath(qMarkers::Array, pointDensity::Real)
         return qPath, qPathParts
 end
 
-
-
-
-function getDispersion(qPath::Array, crystal::Crystal, couplings::Array)
-        eigenValues = []
-        for q in qPath
-                𝔻ₖ = 𝔻(q, crystal, couplings)
-                vals = map( x -> round(x, digits=10) , eigvals(𝔻ₖ))
-                freq = .√vals./(2π)
-                append!(eigenValues, [freq])
+function getSlabCouplingArray(slab::Slab, bulkCouplingArray::Array)
+        numAtoms = length(slab.unitCell)
+        shift = slab.numAtomsMovedToBottom
+        numBulkAtoms = length(bulkCouplingArray)
+        slabCouplingArray = []
+        for i in 1:numAtoms
+                push!(slabCouplingArray, [])
+                for j in 1:numAtoms
+                        push!(slabCouplingArray[i], bulkCouplingArray[mod(i-1+shift, numBulkAtoms)+1][mod(j-1+shift, numBulkAtoms)+1])
+                end
         end
-        return eigenValues
+        return slabCouplingArray
 end
 
 
+function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array)
+        𝔻List = map(q -> 𝔻(q, crystal, couplings), qPath)
+        ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
+        fValues = map( x -> .√x./(2π), ω²Values)
+        return fValues
+end
 
 
 function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[])

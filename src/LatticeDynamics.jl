@@ -9,7 +9,7 @@ include("dynamicalmatrix.jl")
 include("model.jl")
 
 
-export Crystal, Slab, getNeighbors!,
-       buildPath, getDispersion, plotDispersion
+export Crystal, Slab, projectVector,
+       getSlabCouplingArray, buildPath, getDispersion, plotDispersion
 
 end #module
