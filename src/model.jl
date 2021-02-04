@@ -15,7 +15,7 @@ end
 
 
 function buildPath(qMarkers::Array, pointDensity::Real)
-        qPathParts = Float64[0.0]
+        qPathParts = Float64[1.0]
         firstLine = buildLine(qMarkers[1], qMarkers[2], pointDensity)
         qPath = firstLine
         append!(qPathParts, length(firstLine))
@@ -28,6 +28,7 @@ function buildPath(qMarkers::Array, pointDensity::Real)
         end
         return qPath, qPathParts
 end
+
 
 function getSlabCouplingArray(slab::Slab, bulkCouplingArray::Array)
         numAtoms = length(slab.unitCell)
@@ -64,7 +65,7 @@ function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=
     end
     plot(bands, linewidth=2, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=(800, 400))
     plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
-    xlims!((0.0, qPathParts[end]))
+    xlims!((1.0, qPathParts[end]))
     ylims!(0, Inf)
     title!("Phonon Dispersion")
     ylabel!("Frequency (THz)")
