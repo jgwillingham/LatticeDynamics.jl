@@ -45,7 +45,9 @@ end
 
 
 function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array)
-        𝔻List = map(q -> 𝔻(q, crystal, couplings), qPath)
+        𝕕List = map(q -> 𝕕(q, crystal, couplings), qPath)
+        𝕄 = crystal.𝕄
+        𝔻List = map(x -> Hermitian(Complex.(𝕄*x*𝕄)), 𝕕List)
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
         fValues = map( x -> .√x./(2π), ω²Values)
         return fValues
