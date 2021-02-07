@@ -86,8 +86,12 @@ function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=
         append!(bands, [t])
     end
     plot(bands, linewidth=2, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=size, color=color)
-    plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
-    xlims!((1.0, qPathParts[end]))
+    if length(qPathParts) > 0
+            plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
+            xlims!((1.0, qPathParts[end]))
+    else
+            xlims!((1.0, Inf))
+    end
     ylims!(ylims[1], ylims[2])
     title!(title)
     ylabel!("Energy (meV)")
