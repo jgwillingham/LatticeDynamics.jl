@@ -56,6 +56,27 @@ function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::A
 end
 
 
+function getProjectedDispersion(qPath::Array, qzPath::Array, crystal::Crystal, couplings::Array)
+        layerDispersions = []
+        # Calculate dispersion for each layer to be projected onto surface BZ
+        for qz in qzPath
+                zLayerPath = map(q -> q + qz, qPath)
+                zLayerDisp = getDispersion(zLayerPath, crystal, couplings)
+                push!(layerDispersions, zLayerDisp)
+        end
+        # Restructure output so that it can be plotted with plotDispersion(...)
+        projectedDisp = Array{Array}(undef, length(qPath))
+        for qi in eachindex(qPath)
+            projectedDisp[qi] = []
+            for layer in eachindex(layerDispersions)
+                append!(projectedDisp[qi], layerDispersions[layer][qi])
+            end
+        end
+        return projectedDisp
+end
+
+
+
 function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[]; ylims::Array=[0.0, Inf], color::Symbol=:steelblue, size::Tuple=(600,350), title::String="")
     bands = []
 
