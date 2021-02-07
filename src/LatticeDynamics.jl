@@ -6,6 +6,7 @@ include("structure.jl")
 include("shortrange.jl")
 include("coulomb.jl")
 include("dynamicalmatrix.jl")
+include("greensfunction.jl")
 include("model.jl")
 
 
