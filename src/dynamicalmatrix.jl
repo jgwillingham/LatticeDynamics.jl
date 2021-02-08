@@ -2,18 +2,17 @@
 
 
 using LinearAlgebra: norm, dot
-using BlockArrays: BlockArray, setblock!
 
 
 
 
-function blockMatrix(blocks::Array{Array})
-    blockStack = vcat(vec(blocks)...)
+function blockMatrix(blocks::Matrix{Matrix})
+    blockStack = reduce(vcat, blocks)
     stackSize = size(blockStack)[1]
     blockSize = size(blockStack)[2]
     dimension = blockSize*size(blocks)[1]
     parts = [blockStack[i:i+dimension-1, :] for i in 1:dimension:stackSize]
-    blockmatrix = hcat(parts...)
+    blockmatrix = reduce(hcat, parts)
     return blockmatrix
 end
 
@@ -88,25 +87,17 @@ end
 # Construct the full contribution to the dynamical matrix from short range forces
 function 𝕊(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
         atomsPerUnitCell = length(crystal.unitCell)
-        blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
-        #blocks = BlockArray{Complex}(undef, repeat([3], atomsPerUnitCell), repeat([3], atomsPerUnitCell) )
+        blocks = Matrix{Matrix}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
         for i in 1:atomsPerUnitCell
                 for j in 1:i
                         blocks[i,j] = 𝕊_block(i, j, q, crystal, couplings)
-                        #blockᵢⱼ = 𝕊_block(i, j, q, crystal, couplings)
                         if i==j
-                                #blockᵢⱼ += 𝕊_self(i, crystal, couplings)
                                 blocks[i,j] += 𝕊_self(i, crystal, couplings)
-                                #setblock!(blocks, blockᵢⱼ, i, j)
                         else
-                                #blockⱼᵢ = adjoint(blockᵢⱼ)
                                 blocks[j,i] = adjoint(blocks[i,j])
-                                #setblock!(blocks, blockᵢⱼ, i, j)
-                                #setblock!(blocks, blockⱼᵢ, j, i)
                         end
                 end
         end
-        #𝕊matrix = Hermitian(Array(blocks))
         𝕊matrix = Hermitian(blockMatrix(blocks))
         return 𝕊matrix
 end
@@ -137,9 +128,11 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝕕(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
+function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
         𝕊ₖ = 𝕊(q, crystal, couplings)
         # ℂₖ = ℂ(q, crystal, charges)
-        𝕕ₖ = 𝕊ₖ #+ ℂₖ
-        return 𝕕ₖ
+
+        𝕄 = crystal.𝕄
+        𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄) #+ ℂₖ
+        return 𝔻ₖ
 end

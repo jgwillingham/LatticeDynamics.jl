@@ -31,7 +31,7 @@ function ewald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
 end
 
 
-function differentPlaneSum(q, Δ∥::Vector, Δ⟂::Vector, crystal::Slab)
+function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab)
 end
 
 
