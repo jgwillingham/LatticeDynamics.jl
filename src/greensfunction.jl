@@ -46,3 +46,42 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=10.0^-9.0)
     end
     throw(ArgumentError("Your dynamical matrix is not tridiagonal. Possibly it is too small."))
 end
+
+
+@inline function sanchoIterate(zI::Array, α::Array, β::Array, εˢ::Array, ε::Array)
+    g = inv( zI - ε )
+    newα = α*g*α
+    newβ = β*g*β
+    newεˢ = εˢ + α*g*β
+    newϵ = ε + α*g*β + β*g*α
+    return newα, newβ, newεˢ, newε
+end
+
+
+function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
+    # initial principal layer blocks from dynamical matrix
+    α = Dblocks[1,2]
+    β = Dblocks[2,1]
+    εˢ = Dblocks[1,1]
+    ε = Dblocks[2,2]
+
+    z = ω^2 + im*η
+    blockSize = size(εˢ)[1]
+    zI = z*Matrix(I, blockSize, blockSize)
+    # iterate
+    counter = 0
+    while counter <= iterNum
+        α, β, εˢ, ε = sanchoIterate(zI, α, β, εˢ, ε)
+        counter += 1
+    # calculate surface Green's function
+    Gω = inv( zI - εˢ )
+    # Calculate spectral function / local density of states (LDOS) at (q,ω)
+    Aω = (-1.0/π) * imag(tr(Gω))
+    return Aω
+end
+
+
+function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=10.0^-4, iterNum::Integer=15)
+    εToω = 2π/4.13567
+    ωList = εToω .* εList
+end
