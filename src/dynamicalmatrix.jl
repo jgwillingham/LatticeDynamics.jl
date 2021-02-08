@@ -128,9 +128,11 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝕕(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
+function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
         𝕊ₖ = 𝕊(q, crystal, couplings)
         # ℂₖ = ℂ(q, crystal, charges)
-        𝕕ₖ = 𝕊ₖ #+ ℂₖ
-        return 𝕕ₖ
+
+        𝕄 = crystal.𝕄
+        𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄) #+ ℂₖ
+        return 𝔻ₖ
 end

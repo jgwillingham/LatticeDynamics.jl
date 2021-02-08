@@ -46,14 +46,33 @@ end
 
 
 function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array)
-        𝕕List = map(q -> 𝕕(q, crystal, couplings), qPath)
-        𝕄 = crystal.𝕄
-        𝔻List = map(x -> Hermitian(Complex.(𝕄*x*𝕄)), 𝕕List)
+        𝔻List = map(q -> 𝔻(q, crystal, couplings), qPath)
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
         fValues = map( x -> .√x./(2π), ω²Values)
         meVDispersion = 4.13567 .*fValues # convert THz to meV
         return meVDispersion
 end
+
+
+function getProjectedDispersion(qPath::Array, qzPath::Array, crystal::Crystal, couplings::Array)
+        layerDispersions = []
+        # Calculate dispersion for each layer to be projected onto surface BZ
+        for qz in qzPath
+                zLayerPath = map(q -> q + qz, qPath)
+                zLayerDisp = getDispersion(zLayerPath, crystal, couplings)
+                push!(layerDispersions, zLayerDisp)
+        end
+        # Restructure output so that it can be plotted with plotDispersion(...)
+        projectedDisp = Array{Array}(undef, length(qPath))
+        for qi in eachindex(qPath)
+            projectedDisp[qi] = []
+            for layer in eachindex(layerDispersions)
+                append!(projectedDisp[qi], layerDispersions[layer][qi])
+            end
+        end
+        return projectedDisp
+end
+
 
 
 function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[]; ylims::Array=[0.0, Inf], color::Symbol=:steelblue, size::Tuple=(600,350), title::String="")
@@ -65,8 +84,12 @@ function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=
         append!(bands, [t])
     end
     plot(bands, linewidth=2, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=size, color=color)
-    plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
-    xlims!((1.0, qPathParts[end]))
+    if length(qPathParts) > 0
+            plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
+            xlims!((1.0, qPathParts[end]))
+    else
+            xlims!((1.0, Inf))
+    end
     ylims!(ylims[1], ylims[2])
     title!(title)
     ylabel!("Energy (meV)")
