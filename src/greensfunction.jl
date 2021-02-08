@@ -2,6 +2,7 @@
 
 
 using LinearAlgebra
+using ProgressMeter
 
 
 function blockSplit(matrix::Hermitian, blockSize::Int)
@@ -48,12 +49,12 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=10.0^-9.0)
 end
 
 
-@inline function sanchoIterate(zI::Array, α::Array, β::Array, εˢ::Array, ε::Array)
+@inline function sanchoIterate(zI::Array, α::AbstractArray, β::AbstractArray, εˢ::AbstractArray, ε::AbstractArray)
     g = inv( zI - ε )
     newα = α*g*α
     newβ = β*g*β
     newεˢ = εˢ + α*g*β
-    newϵ = ε + α*g*β + β*g*α
+    newε = ε + α*g*β + β*g*α
     return newα, newβ, newεˢ, newε
 end
 
@@ -73,15 +74,31 @@ function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
     while counter <= iterNum
         α, β, εˢ, ε = sanchoIterate(zI, α, β, εˢ, ε)
         counter += 1
-    # calculate surface Green's function
+    end
+    # calculate surface Green's function and local density of states (LDOS) at (q,ω)
     Gω = inv( zI - εˢ )
-    # Calculate spectral function / local density of states (LDOS) at (q,ω)
     Aω = (-1.0/π) * imag(tr(Gω))
     return Aω
 end
 
 
-function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=10.0^-4, iterNum::Integer=15)
+function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=10.0^-4, iterNum::Integer=20)
     εToω = 2π/4.13567
     ωList = εToω .* εList
+
+    testq = [0.1, 0.1, 0.1]
+    testD = 𝔻(testq, crystal, couplings)
+    PLSize = getPrincipalLayerSize(testD)
+
+    Aqω = []
+    prog = Progress(length(qList), 0.1, "BZ Path:", 50)
+    for q in qList
+        print()
+        dynamicalMatrix = 𝔻(q, crystal, couplings)
+        blocks = blockSplit(dynamicalMatrix, PLSize)
+        energyCurve = map(x -> getLDOS(x, η, blocks, iterNum), ωList)
+        push!(Aqω, energyCurve)
+        next!(prog)
+    end
+    return Aqω
 end
