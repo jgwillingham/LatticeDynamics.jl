@@ -12,6 +12,6 @@ include("model.jl")
 export Crystal, Slab, projectVector,
        getSlabCouplingArray, buildPath,
        getDispersion, getProjectedDispersion,
-       plotDispersion
+       plotDispersion, 𝔻
 
 end #module
