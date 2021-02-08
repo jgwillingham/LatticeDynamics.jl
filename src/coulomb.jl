@@ -1,11 +1,18 @@
-
-
-
 using LinearAlgebra: norm
+# All the structs are in structure.jl
 
 # this will contain all functions for implementing Ewald summation
 
 function getChargeMatrix(charges::Array)
+    "Get charge for matrix Z, returning a diagonal
+    matrix containing the charges"
+
+    e = 15.1891
+    d = Vector{Float64}(vec([]))
+    for i=1:size(charge)[1]
+		push!(d, charge[i],charge[i],charge[i])
+	end
+    Z = Diagonal(d)
 end
 
 
