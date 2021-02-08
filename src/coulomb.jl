@@ -9,8 +9,8 @@ function getChargeMatrix(charges::Array)
 
     e = 15.1891
     d = Vector{Float64}(vec([]))
-    for i=1:size(charge)[1]
-		push!(d, charge[i],charge[i],charge[i])
+    for i=1:size(charges)[1]
+		push!(d, charges[i],charges[i],charges[i])
 	end
     Z = Diagonal(d)
 end
