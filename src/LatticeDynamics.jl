@@ -14,6 +14,6 @@ export Crystal, Slab, projectVector,
        getSlabCouplingArray, buildPath,
        getDispersion, getProjectedDispersion,
        plotDispersion, 𝔻,
-       spectralFunction
+       getSpectrum, plotSpectrum
 
 end #module

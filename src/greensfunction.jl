@@ -10,14 +10,14 @@ function blockSplit(matrix::Hermitian, blockSize::Int)
     if mod(matrixSize, blockSize) != 0
         throw(ArgumentError("Block dimension must divide matrix dimension"))
     end
-    blockIndices = [[(i:(i+blockSize-1), j:(j+blockSize-1)) for j in 1:blockSize:matrixSize] for i in 1:blockSize:matrixSize]
+    blockIndices = [[(i:(i+blockSize-1), j:(j+blockSize-1)) for i in 1:blockSize:matrixSize] for j in 1:blockSize:matrixSize]
     # reduce(hcat, blockIndices) forms a matrix of indices such that matrix[inx...] has the same position in the matrix
     blockViews = map(x -> view(matrix, x...), reduce(hcat, blockIndices))
     return blockViews
 end
 
 
-function isTridiagonalSplit(blockViews::Array, tol::Real=10.0^-9.0)
+function isTridiagonalSplit(blockViews::Array, tol::Real=1e-9)
     absBlocks = map(x->abs.(x), blockViews)
     # calculate the average abs value of elements in each 3x3 block
     absAverages = map(x -> sum(x)/9.0, absBlocks)
@@ -34,7 +34,7 @@ function isTridiagonalSplit(blockViews::Array, tol::Real=10.0^-9.0)
 end
 
 
-function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=10.0^-9.0)
+function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=1e-9)
     Dsize = size(dynamicalMatrix)[1]
     maxBlockSize = Dsize ÷ 3 # principal layers this big will involve interacting surfaces
     for blockSize in 3:3:maxBlockSize
@@ -45,12 +45,12 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=10.0^-9.0)
             end
         end
     end
-    throw(ArgumentError("Your dynamical matrix is not tridiagonal. Possibly it is too small."))
+    throw(ArgumentError("Your dynamical matrix is either too small or not block-tridiagonal"))
 end
 
 
 @inline function sanchoIterate(zI::Array, α::AbstractArray, β::AbstractArray, εˢ::AbstractArray, ε::AbstractArray)
-    g = inv( zI - ε )
+    g = inv(zI - ε)
     newα = α*g*α
     newβ = β*g*β
     newεˢ = εˢ + α*g*β
@@ -69,20 +69,24 @@ function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
     z = ω^2 + im*η
     blockSize = size(εˢ)[1]
     zI = z*Matrix(I, blockSize, blockSize)
-    # iterate
-    counter = 0
+    # iterate / decimate
+    counter = 1
     while counter <= iterNum
         α, β, εˢ, ε = sanchoIterate(zI, α, β, εˢ, ε)
         counter += 1
     end
-    # calculate surface Green's function and local density of states (LDOS) at (q,ω)
-    Gω = inv( zI - εˢ )
+    # surface Green's function:
+    Gω = inv(zI - εˢ)
+    # bulk Green's function: (yields bulk projection without surface states)
+    #Gω = inv(zI - ε)
+
     Aω = (-1.0/π) * imag(tr(Gω))
+
     return Aω
 end
 
 
-function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=10.0^-4, iterNum::Integer=20)
+function getSpectrum(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=1e-4, iterNum::Integer=22)
     εToω = 2π/4.13567
     ωList = εToω .* εList
 
@@ -91,9 +95,8 @@ function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings:
     PLSize = getPrincipalLayerSize(testD)
 
     Aqω = []
-    prog = Progress(length(qList), 0.1, "BZ Path:", 50)
+    prog = Progress(length(qList), 1, "", 50) # makes a progress bar
     for q in qList
-        print()
         dynamicalMatrix = 𝔻(q, crystal, couplings)
         blocks = blockSplit(dynamicalMatrix, PLSize)
         energyCurve = map(x -> getLDOS(x, η, blocks, iterNum), ωList)
@@ -101,4 +104,22 @@ function spectralFunction(qList::Array, εList::Array, crystal::Slab, couplings:
         next!(prog)
     end
     return Aqω
+end
+
+
+function plotSpectrum(Aqω::Array, εList::Array=[], qPathParts::Array=[], qLabels::Array=[]; size::Tuple=(600, 350), numyticks::Integer=5, color::Symbol=:inferno, title::String="")
+    N = numyticks
+    if length(εList)!=0
+        yticklocs = [n/N*length(εList) for n in 0:N]
+        ytickvals = [round(n/N*max(εList...), digits=2) for n in 0:N]
+        yticks = (yticklocs, ytickvals)
+    else
+        yticks=([],[])
+    end
+
+    plottableAqω = log10.(hcat(Aqω...))
+    heatmap(plottableAqω, xticks=(qPathParts, qLabels), xtickfont=(13), yticks=yticks, size=size, color=color, title=title, ylabel="Energy (meV)")
+    if length(qPathParts) > 0
+        plot!(qPathParts, seriestype=:vline, color=:white, linealpha=0.35, legend=false)
+    end
 end
