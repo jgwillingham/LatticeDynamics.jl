@@ -95,13 +95,12 @@ function getSpectrum(qList::Array, εList::Array, crystal::Slab, couplings::Arra
     PLSize = getPrincipalLayerSize(testD)
 
     Aqω = []
-    prog = Progress(length(qList), 1, "", 50) # makes a progress bar
-    for q in qList
-        dynamicalMatrix = 𝔻(q, crystal, couplings)
-        blocks = blockSplit(dynamicalMatrix, PLSize)
-        energyCurve = map(x -> getLDOS(x, η, blocks, iterNum), ωList)
+    #prog = Progress(length(qList), 1, "", 50) # makes a progress bar
+    DList = @showprogress 0 "Building Dynamical Matrices... " map(x -> 𝔻(x, crystal, couplings), qList)
+    DBlockList = map(x-> blockSplit(x, PLSize), DList)
+    @showprogress 1 "Calculating LDOS... " for DBlocks in DBlockList
+        energyCurve = map(x -> getLDOS(x, η, DBlocks, iterNum), ωList)
         push!(Aqω, energyCurve)
-        next!(prog)
     end
     return Aqω
 end
@@ -134,9 +133,9 @@ function getEnergySurface(energy::Float64, qPath1::Array, qPath2::Array, crystal
     PLSize = getPrincipalLayerSize(testD)
 
     qArray = [[q₁+q₂ for q₂ in qPath2] for q₁ in qPath1]
-    DArray = map(x -> 𝔻(x, crystal, couplings), reduce(hcat, qArray) )
+    DArray = @showprogress 1 "Building Dynamical Matrices... " map(x -> 𝔻(x, crystal, couplings), reduce(hcat, qArray) )
     DBlocksArray = map(x->blockSplit(x, PLSize), DArray)
-    εLDOS = map(x->getLDOS(ω,η,x,iterNum), DBlocksArray)
+    εLDOS = @showprogress 1 "Calculating LDOS... " map(x->getLDOS(ω,η,x,iterNum), DBlocksArray)
     return εLDOS
 end
 
