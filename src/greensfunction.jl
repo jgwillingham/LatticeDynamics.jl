@@ -123,3 +123,24 @@ function plotSpectrum(Aqω::Array, εList::Array=[], qPathParts::Array=[], qLabe
         plot!(qPathParts, seriestype=:vline, color=:white, linealpha=0.35, legend=false)
     end
 end
+
+
+function getEnergySurface(energy::Float64, qPath1::Array, qPath2::Array, crystal::Slab, couplings::Array; η::Float64=1e-4, iterNum::Integer=22)
+    εToω = 2π/4.13567
+    ω = εToω * energy
+
+    testq = [0.1, 0.1, 0.1]
+    testD = 𝔻(testq, crystal, couplings)
+    PLSize = getPrincipalLayerSize(testD)
+
+    qArray = [[q₁+q₂ for q₂ in qPath2] for q₁ in qPath1]
+    DArray = map(x -> 𝔻(x, crystal, couplings), reduce(hcat, qArray) )
+    DBlocksArray = map(x->blockSplit(x, PLSize), DArray)
+    εLDOS = map(x->getLDOS(ω,η,x,iterNum), DBlocksArray)
+    return εLDOS
+end
+
+
+function plotEnergySurface(εLDOS::Array)
+    heatmap(log10.(εLDOS), xticks=([],[]), yticks=([],[]))
+end

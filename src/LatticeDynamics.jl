@@ -14,6 +14,7 @@ export Crystal, Slab, projectVector,
        getSlabCouplingArray, buildPath,
        getDispersion, getProjectedDispersion,
        plotDispersion, 𝔻,
-       getSpectrum, plotSpectrum
+       getSpectrum, plotSpectrum,
+       getEnergySurface, plotEnergySurface
 
 end #module
