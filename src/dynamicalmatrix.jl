@@ -85,10 +85,10 @@ end
 
 
 # Construct the full contribution to the dynamical matrix from short range forces
-function 𝕊(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
-        atomsPerUnitCell = length(crystal.unitCell)
-        blocks = Matrix{Matrix}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
-        for i in 1:atomsPerUnitCell
+function 𝕊(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Integer)
+        #atomsPerUnitCell = length(crystal.unitCell)
+        blocks = Matrix{Matrix}(undef, (atomDepth, atomDepth) )
+        for i in 1:atomDepth
                 for j in 1:i
                         blocks[i,j] = 𝕊_block(i, j, q, crystal, couplings)
                         if i==j
@@ -128,11 +128,14 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
-        𝕊ₖ = 𝕊(q, crystal, couplings)
+function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array; atomDepth::Integer=0)
+        if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
+                atomDepth=length(crystal.unitCell) #the full atomDepth
+        end
+        𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)
         # ℂₖ = ℂ(q, crystal, charges)
 
-        𝕄 = crystal.𝕄
+        𝕄 = crystal.𝕄[1:3*atomDepth, 1:3*atomDepth]
         𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄) #+ ℂₖ
         return 𝔻ₖ
 end
