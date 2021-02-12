@@ -14,12 +14,12 @@ _______________________________
     - [Bulk Crystals](#Bulk-Crystals)
     - [Surfaces](#Surfaces)
 * [Interactions](#Interactions)
-    - [Short-Range Parameters](#Short-Range-Parameters)
-    - [Coulomb Parameters: Effective Charges](#Coulomb-Parameters:-Effective-Charges)
+    - [Short-Range Forces](#Short-Range-Forces)
+    - [Coulomb Effective Charges](#Coulomb-Effective-Charges)
 * [The Phonon Spectrum](#The-Phonon-Spectrum)
-    - [Paths Through the (Surface) BZ](#Paths-Through-the-(Surface)-BZ)
-    - [Calculating/Plotting Dispersion](#Calculating/Plotting-Dispersion)
-    - [Green's Function Methods](#Green's-Function-Methods)
+    - [Paths Through the (Surface) BZ](#Paths-Through-the-Surface-BZ)
+    - [Calculating/Plotting Dispersion](#CalculatingPlotting-Dispersion)
+    - [Green's Function Methods](#Greens-Function-Methods)
 ________________________________
 ## Crystal Structure
 
@@ -60,7 +60,7 @@ Right now, LatticeDynamics.jl supports two types of interactions:
 * Short-range radial interactions
 * Long-range Coulomb interactions
 
-### Short-Range Parameters
+### Short-Range Forces
 
 The short-range forces are modeled by a radial potential. So the interaction between atoms at positions ***r***<sub>i</sub> and ***r***<sub>j</sub> looks like *V*(|***r***<sub>i</sub> - ***r***<sub>j</sub>|). With this assumption, the force constant matrix only depends on the value of the first and second derivatives at the equilibrium separation. These two values are taken to be phenomenological parameters which we might call *A*<sub>ij</sub> and *B*<sub>ij</sub>. **So the short-range interaction between two atoms is completely specified by two numbers**. Packaging these as a tuple (*A*<sub>ij</sub>, *B*<sub>ij</sub>), we organize the short-range interaction parameters for every pair of atom types as 
 
@@ -74,7 +74,7 @@ So the short-range interaction parameters between atoms *i* and *j* is just obta
 getSlabCouplingsArray(myslab, couplings)
 ```
 
-### Coulomb Parameters: Effective Charges
+### Coulomb Effective Charges
 
 For the long-range Coulomb interactions, the form of the potential is of course 1/r. So we simply assign to each atom in the unit cell an effective charge *Z*<sub>i</sub> which is understood to be in units of the fundamental electron charge *e*. So we write
 ```julia
@@ -89,6 +89,7 @@ ____________________________________
 ## The Phonon Spectrum
 
 ### Paths Through the (Surface) BZ
+
 With the crystal structure and interaction parameters specified, we can now calculate the phonon spectrum. We want a path through the 3D Brillouin zone to calculate the dispersion along. Given the high symmetry points which we travel between, we can build this path with the `buildPath` function. If we have the high symmetry points Γ, X, W, and K, we can build the path Γ -> X -> W -> K -> Γ. But we have to specify how many points to include. We do this with a `pointdensity`. We then build the path with 
 ```julia
 pointdensity = 35 # sampling rate <- how many points per angstrom should we calculate the energies
@@ -100,6 +101,7 @@ inplaneX, outofplaneX = projectVector(X, myslab.surfaceNormal)
 ```
 
 ### Calculating/Plotting Dispersion
+
 With the Brillouin zone path defined, we can get the dispersion with `getDispersion` and plot it with `plotDispersion`
 ```julia
 disp = getDispersion(bzpath, mycrystal, couplings)
@@ -109,6 +111,7 @@ plotDispersion(disp, bzpathparts, labels)
 This calculates the phonon dispersion along the given path Γ -> X -> W -> K -> Γ and plots it. The `bzpathparts` is just for plotting. It tells where on the plot to show the high symmetry points. 
 
 ### Green's Function Methods
+
  The `getDispersion` function can be used to directly diagonalize a slab dynamical matrix, but it is often useful to consider an alternative method to obtaining the surface spectrum; namely The recursion-decimation Green's function algorithm (Sancho 1985). This is called with
  ```julia
  sbzpath, sbzpathparts = buildPath(highsymmpoints, pointdensity)
