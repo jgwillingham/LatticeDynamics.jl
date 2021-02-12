@@ -21,7 +21,7 @@ end
 
 
 # 𝕊_block method for shortRange interactions in bulk models
-function 𝕊_block(i::Int, j::Int, q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
+function 𝕊_block(i::Int, j::Int, q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array)
         e = 15.1891
         a₁, a₂, a₃ = crystal.latticeVectors
         vol = abs(dot(a₁, cross(a₂, a₃)))
@@ -85,7 +85,7 @@ end
 
 
 # Construct the full contribution to the dynamical matrix from short range forces
-function 𝕊(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Integer)
+function 𝕊(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Int)
         #atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Matrix}(undef, (atomDepth, atomDepth) )
         for i in 1:atomDepth
@@ -128,7 +128,7 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array; atomDepth::Integer=0)
+function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array; atomDepth::Int=0)
         if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
                 atomDepth=length(crystal.unitCell) #the full atomDepth
         end

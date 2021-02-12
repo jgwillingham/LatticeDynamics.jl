@@ -17,7 +17,7 @@ function blockSplit(matrix::Hermitian, blockSize::Int)
 end
 
 
-function isTridiagonalSplit(blockViews::Array, tol::Real=1e-9)
+function isTridiagonalSplit(blockViews::Array, tol::Float64=1e-9)
     absBlocks = map(x->abs.(x), blockViews)
     # calculate the average abs value of elements in each 3x3 block
     absAverages = map(x -> sum(x)/9.0, absBlocks)
@@ -34,7 +34,7 @@ function isTridiagonalSplit(blockViews::Array, tol::Real=1e-9)
 end
 
 
-function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=1e-9)
+function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Float64=1e-9)
     Dsize = size(dynamicalMatrix)[1]
     maxBlockSize = Dsize ÷ 3 # principal layers this big will involve interacting surfaces
     for blockSize in 3:3:maxBlockSize
@@ -49,7 +49,7 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Real=1e-9)
 end
 
 
-@inline function sanchoIterate(zI::Array, α::AbstractArray, β::AbstractArray, εˢ::AbstractArray, ε::AbstractArray)
+@inline function sanchoIterate(zI::Matrix, α::T, β::T, εˢ::T, ε::T) where T<:Union{Array, SubArray}
     g = inv(zI - ε)
     newα = α*g*α
     newβ = β*g*β
@@ -59,7 +59,7 @@ end
 end
 
 
-function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
+function getLDOS(ω::Float64, η::Float64, Dblocks::Array, iterNum::Int)
     # initial principal layer blocks from dynamical matrix
     α = Dblocks[1,2]
     β = Dblocks[2,1]
@@ -67,8 +67,7 @@ function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
     ε = Dblocks[2,2]
 
     z = ω^2 + im*η
-    blockSize = size(εˢ)[1]
-    zI = z*Matrix(I, blockSize, blockSize)
+    zI = z*Matrix(I, size(ε))
     # iterate / decimate
     counter = 1
     while counter <= iterNum
@@ -86,7 +85,7 @@ function getLDOS(ω::Real, η::Real, Dblocks::Array, iterNum::Integer)
 end
 
 
-function getSpectrum(qList::Array, εList::Array, crystal::Slab, couplings::Array; η::Real=1e-4, iterNum::Integer=22)
+function getSpectrum(qList::Array, εList::Array{Float64,1}, crystal::Slab, couplings::Array; η::Float64=1e-4, iterNum::Int=22)
     εToω = 2π/4.13567
     ωList = εToω .* εList
 
@@ -124,11 +123,11 @@ function plotSpectrum(Aqω::Array, εList::Array=[], qPathParts::Array=[], qLabe
 end
 
 
-function getEnergySurface(energy::Float64, qPath1::Array, qPath2::Array, crystal::Slab, couplings::Array; η::Float64=1e-4, iterNum::Integer=22)
+function getEnergySurface(energy::Float64, qPath1::Array, qPath2::Array, crystal::Slab, couplings::Array; η::Float64=1e-4, iterNum::Int=22)
     εToω = 2π/4.13567
     ω = εToω * energy
 
-    testq = [0.1, 0.1, 0.1]
+    testq = [0.1, 0.2, 0.3]
     testD = 𝔻(testq, crystal, couplings)
     PLSize = getPrincipalLayerSize(testD)
     atomDepth = 2*PLSize ÷ 3
