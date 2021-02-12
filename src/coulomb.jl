@@ -13,6 +13,12 @@ end
 
 # Returns a list of lattice (real or reciprocal) vectors which are to be summed over. Equivalent of _buildList in coulomb.py
 function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
+    "Builds and returns a list of vectors to be summed over in Ewald summation"
+    sumRange = collect(-sumDepth:1:sumDepth)   
+    zSumRange = 
+    if length(latticeVectors[1]) == 3
+        
+    
 end
 
 
