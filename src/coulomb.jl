@@ -6,13 +6,8 @@ using LinearAlgebra: norm
 function getChargeMatrix(charges::Array)
     "Get charge for matrix Z, returning a diagonal
     matrix containing the charges"
-
     e = 15.1891
-    d = Vector{Float64}(vec([]))
-    for i=1:size(charges)[1]
-		push!(d, charges[i],charges[i],charges[i])
-	end
-    Z = Diagonal(d)
+    Z = Diagonal(repeat(charges, inner=[3])) .* e
 end
 
 
