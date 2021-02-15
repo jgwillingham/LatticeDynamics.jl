@@ -46,7 +46,7 @@ end
 
 
 # This is the bulk ewald method
-function ewald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
+function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
     """
     Calculates the Ewald summation for the bulk crystal at wavevector `q`. 
     It returns the block of the Coulomb contribution to the dynamical
@@ -65,7 +65,7 @@ end
 
 
 # this is the slab ewald (deWette) method
-function ewald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
+function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
 end
 
 
