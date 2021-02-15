@@ -1,5 +1,4 @@
 using LinearAlgebra: norm
-# All the structs are in structure.jl
 
 # this will contain all functions for implementing Ewald summation
 
@@ -55,7 +54,21 @@ function qSpaceSum(q::Vector, Δ::Vector)
     -------
     Cfar_ij : ndarray 2D array containing the reciprocal lattice sum
     """
+    
+end
 
+function realSpaceSum(q::Vector, Δ::Vector)
+    """
+    Direct lattice sum in d-dimensional Ewald summation
+
+    Parameters
+    ----------
+    q : array_like wavevector
+    Δ : array_like Vector pointing between atom locations within unit cell.
+    Returns
+    -------
+    Cfar_ij : 2D array containing the direct lattice sum
+    """
 end
 
 # This is the bulk ewald method
@@ -71,8 +84,8 @@ function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
         Block i,j of Coulomb contribution to dynamical matrix.
 
     """
-    C_far = QSPACESUM(q, Δ)
-    C_near = REALSPACESUM(q, Δ)
+    C_far = qSpaceSum(q, Δ)
+    C_near = realSpaceSum(q, Δ)
     C_ij = C_far + C_near
 end
 
