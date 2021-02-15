@@ -43,6 +43,20 @@ function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     return l
 end
 
+function qSpaceSum(q::Vector, Δ::Vector)
+    """
+    Reciprocal lattice sum in d-dimensional Ewald summation
+
+    Parameters
+    ----------
+    q : array_like wavevector
+    Δ : array_like vector pointing between atoms in the unit cell
+    Returns
+    -------
+    Cfar_ij : ndarray 2D array containing the reciprocal lattice sum
+    """
+
+end
 
 # This is the bulk ewald method
 function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
@@ -57,8 +71,8 @@ function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
         Block i,j of Coulomb contribution to dynamical matrix.
 
     """
-    C_far = QSPACESUM(q, INTRACELL_DISTANCE)
-    C_near = REALSPACESUM(q,INTRACELL_DISTANCE)
+    C_far = QSPACESUM(q, Δ)
+    C_near = REALSPACESUM(q, Δ)
     C_ij = C_far + C_near
 end
 
