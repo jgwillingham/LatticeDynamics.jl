@@ -47,6 +47,20 @@ end
 
 # This is the bulk ewald method
 function ewald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
+    """
+    Calculates the Ewald summation for the bulk crystal at wavevector `q`. 
+    It returns the block of the Coulomb contribution to the dynamical
+    matrix relating the two atoms separated by `INTRACELL_DISTANCE`
+
+    Returns
+    -------
+    C_ij : matrix
+        Block i,j of Coulomb contribution to dynamical matrix.
+
+    """
+    C_far = QSPACESUM(q, INTRACELL_DISTANCE)
+    C_near = REALSPACESUM(q,INTRACELL_DISTANCE)
+    C_ij = C_far + C_near
 end
 
 
