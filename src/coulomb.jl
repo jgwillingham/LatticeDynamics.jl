@@ -15,11 +15,10 @@ end
 function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     "Builds and returns a list of vectors to be summed over in Ewald summation"
     sumRange = -sumDepth:1:sumDepth
-    zSumRange = Vector{}
     v = latticeVectors
-    if length(latticeVectors[1]) == 3
+    if length(latticeVectors) == 3
         zSumRange = sumRange
-    else if length(latticeVectors[1]) == 2
+    else if length(latticeVectors) == 2
         zSumRange = [0]
         push!(v,zeros(3))
     else
@@ -31,12 +30,12 @@ function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     l = []
     for n1 in sumRange
         for n2 in sumRange
-            for n3 in sumRange
-                if n1==n2==n3
+            for n3 in zSumRange
+                if n1==n2==n3==0
                     continue
                 else
                     V = vec(n1,n2,n3)
-                    append!(l, V)
+                    push!(l, V)
                 end
             end
         end
