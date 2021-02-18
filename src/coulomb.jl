@@ -54,7 +54,19 @@ function qSpaceSum(q::Vector, Δ::Vector)
     -------
     Cfar_ij : ndarray 2D array containing the reciprocal lattice sum
     """
-    
+    d = SELF.DIM #check where to get dim
+    Cfar_ij = zeros(3,3){ComplexF64}
+    QGList = [q+G for G in GLIST] #Check where to get GList + dim q+G
+
+    if norm(q) > sqrt(eps())
+        push!(QGList, q)
+    end
+
+    for G in QGList
+        term = outer(G,G) / (norm(G)^(d-1)) #check if broadcasting needed
+        term = term * exp(-1im * dot(G,Δ)) #check dot/inner
+        
+
 end
 
 function realSpaceSum(q::Vector, Δ::Vector)
