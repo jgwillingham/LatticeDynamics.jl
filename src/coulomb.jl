@@ -133,6 +133,62 @@ end
 
 # this is the slab ewald (deWette) method
 function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
+    """
+    """
+    id_xy0 = [[1 0 0;
+               0 1 0;
+               0 0 0]]
+    Ec = [[1 0 0;
+           0 1 0;
+           0 0 -2]]
+    a = norm(SELF.LATTICE.MESHPRIMITIVES[1]) #Check where to find
+    Δ = Δ/a
+    q = q*a
+
+    C_ij = 2*pi/(SELF.CELLVOL/a) * Ec 
+    if norm(Δ) < sqrt(eps()) #If there are problems with the value being too high, use eps()
+        C_ij -= 2*pi/3 * Ec
+    end
+    Cfar_ij = zeros(3,3)
+    qGList = [q+a*G for G in SELF.GLIST] #Check where to find
+
+    for qG in qGList
+        qGnorm = norm(qG)
+        arg = qGnorm^2 / (4*pi)
+        ϕ = exp(-1im * dot(qG,Δ))
+        t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0) #Check if float casting necessary on gamma_inc
+        t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg)[1]
+        t = qGnorm*ϕ*(t₁+t₂)
+
+        Cfar_ij = Cfar_ij + t
+    end
+    Cfar_ij *= -sqrt(pi)/(SELF.CELLVOL/a) #Check where to find
+
+    Cnear_ij = zeros(3,3){ComplexF64}
+        
+    DeltaRList = [(R/a + Δ) for R in SELF.RLIST] #Check where to find
+    if norm(Δ) > sqrt(eps())
+        push!(DeltaRList, Δ) # include R=0 term when non-singular
+    end
+
+    for dR in DeltaRList
+        norm = norm(dR)
+        arg = pi*norm^2
+        ϕ = exp(1im* dot(q,(dR-Δ) )) # only lattice vector appears in phase (questionable: Lucas)
+        
+        t₁ = gammainc(5/2, arg) * ( 2*outer(dR, dR)/norm^2 - id_xy0 )  
+        t₂ = Matrix(I,3,3)/2 * gamma_inc(3/2, arg)[1]
+        t = (ϕ/norm^3) * (t₁ + t₂) # times Ec?
+
+        Cnear_ij = Cnear_ij + t
+    end
+    # got rid of minus sign below
+    Cnear_ij *= 2/sqrt(pi)
+
+    C_ij = C_ij + (Cnear_ij + Cfar_ij)*Ec  #Originally was @ Ec, I think this works
+
+    C_ij = C_ij / (a^3) # scaling
+    return -1*C_ij
 end
 
 
