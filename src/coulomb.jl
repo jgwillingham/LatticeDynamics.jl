@@ -65,11 +65,12 @@ function qSpaceSum(q::Vector, Δ::Vector)
     end
 
     for G in QGList
-        term = outer(G,G) / (norm(G)^(d-1)) #check if broadcasting needed
+        norm = norm(G)
+        term = outer(G,G) / (norm^(d-1)) #check if broadcasting needed
         term = term * exp(-1im * dot(G,Δ)) #check dot/inner
         α = (d-1)/2
-        x = norm(G)/(2*SELF.ETA)
-        term = term * gamma_inc(α,x^2)[2] * gamma(α)
+        x = norm/(2*SELF.ETA)
+        term = term * gamma_inc(α,x^2)[2] * gamma(α) #Why the blue line?
         Cfar_ij += term
     end
 
@@ -89,7 +90,7 @@ function realSpaceSum(q::Vector, Δ::Vector)
     Cnear_ij : 2D array containing the direct lattice sum
     """
     Cnear_ij = zeros(3,3){ComplexF64}
-    ΔRlist = [R+ Δ for R in SELF.RLIST]
+    ΔRlist = [R+ Δ for R in SELF.RLIST]  #Check RLIST
 
     if norm(Δ) > 10^(-9)
         push!(ΔRList,Δ)
@@ -97,8 +98,18 @@ function realSpaceSum(q::Vector, Δ::Vector)
         Cnear_ij += Matrix(I,3,3) * 4 / (3*sqrt(pi))
     end
 
-    for dR in 
-
+    for dR in ΔRlist
+        norm = norm(dR)
+        y = SELF.ETA * norm   #Check eta
+        t₁ = outer(dR,dR) / norm^5
+        t₁ *= (3*erfc(y) + 1/sqrt(pi) *  (6*y + 4*y^3)*exp(-y^2))
+        t₂ = Matrix(I,3,3) / norm^3
+        t₂ *=  ( erfc(y) + 2*y * exp(-y^2) / sqrt(pi) )
+        term = t1 - t2
+        term *= exp(1im * dot(q,dR-Δ) )
+        Cnear_ij += term
+    end
+    return -1*Cnear_ij
 end
 
 # This is the bulk ewald method
