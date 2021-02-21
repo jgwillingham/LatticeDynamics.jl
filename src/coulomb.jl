@@ -135,7 +135,14 @@ end
 function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
     """
     """
-    
+    Δₚ, Δₙ = SELF.LATTICE.PROJECTVECTOR(Δ) #Check where to find
+
+    if norm(Δₙ) > sqrt(eps())
+        C_ij = differentPlaneSum(q,Δₚ,Δₙ)
+    else
+        C_ij = samePlaneSumDeWette(q,Δ,crystal)
+    end
+    C_ij
 end
 
 
