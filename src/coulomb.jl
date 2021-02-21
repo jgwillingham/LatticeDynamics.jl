@@ -135,6 +135,17 @@ end
 function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
     """
     """
+    
+end
+
+
+function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab)
+end
+
+
+# Equivalent of _DeWette in coulomb.py
+function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
+    """"""
     id_xy0 = [[1 0 0;
                0 1 0;
                0 0 0]]
@@ -189,13 +200,4 @@ function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
 
     C_ij = C_ij / (a^3) # scaling
     return -1*C_ij
-end
-
-
-function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab)
-end
-
-
-# Equivalent of _DeWette in coulomb.py
-function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
 end
