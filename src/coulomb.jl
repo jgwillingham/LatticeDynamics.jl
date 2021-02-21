@@ -147,12 +147,38 @@ end
 
 
 function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab)
+    """
+    """
+    C_ij = zeros(3,3){ComplexF64}
+    qGList = [q+G for G in SELF.GLIST] #Check where to find
+
+    if norm(q) > sqrt(eps())
+        push!(qGList, q)
+    end
+    n = SELF.LATTICE.SURFACENORMAL #Check
+    sign = sign(n * Δnormal) 
+
+    for qG in qGList
+        qGnorm = norm(qG)
+        Δₙ = norm(Δnormal) #Check
+
+        t₁ = outer(qG, qG)/qGnorm
+        t₂ = 1im * outer(qG,n)
+        t₂ += 1im*outer(n,qG)
+        t₃ = qGnorm*outer(n,n)
+        t = (t₁ - sign*t₂ - t₃)*exp(-1im*dot(qG,Δparallel)) 
+        t = t * exp( - Δₙ * qGnorm)
+        
+        C_ij = C_ij + t
+    end
+    C_ij = C_ij * (2*pi / SELF.CELLVOL) #Check
 end
 
 
 # Equivalent of _DeWette in coulomb.py
 function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
-    """"""
+    """
+    """
     id_xy0 = [[1 0 0;
                0 1 0;
                0 0 0]]
