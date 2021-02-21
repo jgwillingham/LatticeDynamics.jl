@@ -1,4 +1,5 @@
 using LinearAlgebra: norm
+using SpecialFunctions
 
 # this will contain all functions for implementing Ewald summation
 
@@ -10,7 +11,8 @@ function getChargeMatrix(charges::Array)
 end
 
 
-# Returns a list of lattice (real or reciprocal) vectors which are to be summed over. Equivalent of _buildList in coulomb.py
+# Returns a list of lattice (real or reciprocal) vectors which are to be summed over. 
+# Equivalent of _buildList in coulomb.py
 function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     "Builds and returns a list of vectors to be summed over in Ewald summation"
     sumRange = -sumDepth:1:sumDepth
@@ -56,7 +58,7 @@ function qSpaceSum(q::Vector, Δ::Vector)
     """
     d = SELF.DIM #check where to get dim
     Cfar_ij = zeros(3,3){ComplexF64}
-    QGList = [q+G for G in GLIST] #Check where to get GList + dim q+G
+    QGList = [q+G for G in SELF.GLIST] #Check where to get GList + dim q+G
 
     if norm(q) > sqrt(eps())
         push!(QGList, q)
@@ -65,8 +67,13 @@ function qSpaceSum(q::Vector, Δ::Vector)
     for G in QGList
         term = outer(G,G) / (norm(G)^(d-1)) #check if broadcasting needed
         term = term * exp(-1im * dot(G,Δ)) #check dot/inner
-        
+        α = (d-1)/2
+        x = norm(G)/(2*SELF.ETA)
+        term = term * gamma_inc(α,x^2)[2] * gamma(α)
+        Cfar_ij += term
+    end
 
+    Cfar_ij = Cfar_ij * (2*sqrt(pi))^(d-1) / SELF.CELLVOL
 end
 
 function realSpaceSum(q::Vector, Δ::Vector)
@@ -79,8 +86,19 @@ function realSpaceSum(q::Vector, Δ::Vector)
     Δ : array_like Vector pointing between atom locations within unit cell.
     Returns
     -------
-    Cfar_ij : 2D array containing the direct lattice sum
+    Cnear_ij : 2D array containing the direct lattice sum
     """
+    Cnear_ij = zeros(3,3){ComplexF64}
+    ΔRlist = [R+ Δ for R in SELF.RLIST]
+
+    if norm(Δ) > 10^(-9)
+        push!(ΔRList,Δ)
+    else
+        Cnear_ij += Matrix(I,3,3) * 4 / (3*sqrt(pi))
+    end
+
+    for dR in 
+
 end
 
 # This is the bulk ewald method
