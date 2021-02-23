@@ -8,7 +8,7 @@ using Plots
 function buildLine(startPoint::Vector, endPoint::Vector, pointDensity::Real)
         numPoints = pointDensity*norm(endPoint - startPoint)
         numPoints = round(Int, numPoints)
-        samples = range(0, stop=1, length=numPoints)
+        samples = range(0., stop=1., length=numPoints)
         line = [(1-t)*startPoint + t*endPoint for t in samples]
         return line
 end

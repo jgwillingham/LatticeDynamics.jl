@@ -46,7 +46,7 @@ end
 
 function getAdaptedLatticeVectors(latticeVectors::Array, surfaceNormal::Array)
         searchRange = -2:2
-        threshold = 10.0^-9
+        threshold = 1e-9
         a₁, a₂, a₃ = latticeVectors
         n = surfaceNormal
         # 1) within search range, collect lattice vectors that are parallel and non-parallel to the surface
@@ -74,7 +74,7 @@ function getAdaptedLatticeVectors(latticeVectors::Array, surfaceNormal::Array)
         outOfPlaneVector = nonCoplanars[nonCoplanarLengthOrder[1]] # shortest out-of-plane lattice vector
         # 4) Find next shortest in-plane lattice vector which is independent of the other one
         vecAngle(v₁, v₂) = acos(dot(v₁, v₂) / (norm(v₁)*norm(v₂)) )
-        isnonParallel(v₁, v₂) = ( mod(vecAngle(v₁, v₂), π) > 10.0^-5 )
+        isnonParallel(v₁, v₂) = ( mod(vecAngle(v₁, v₂), π) > 1e-5 )
         for Rℓ in orderedCoplanars
                 if isnonParallel(Rℓ, meshPrimitives[1])
                         push!(meshPrimitives, Rℓ)
@@ -110,7 +110,7 @@ function getSlabCell(bulkUnitCell::Array, latticeVectors::Array, adaptedLatticeV
                         bulkPosition_cartesian = dott(atom[2], latticeVectors)
                         position = bulkPosition_cartesian + (ℓ3-1)*outOfPlanePrimitive
                         fractionalCoords = getSlabFractionalCoords(position, adaptedLatticeVectors, numCells)
-                        if (1.0 - abs(fractionalCoords[3])) < 10.0^-9
+                        if (1.0 - abs(fractionalCoords[3])) < 1e-9
                                 fractionalCoords[3] = 0.0
                                 pushfirst!(slabCell, [element*"_0", fractionalCoords])
                                 numAtomsMovedToBottom += 1
@@ -122,6 +122,14 @@ function getSlabCell(bulkUnitCell::Array, latticeVectors::Array, adaptedLatticeV
         return slabCell, numAtomsMovedToBottom
 end
 
+
+function getCartesianUnitCell(unitCell::Array, latticeVectors::Array)
+        cartesianUnitCell = deepcopy(unitCell)
+        for i in eachindex(unitCell)
+                cartesianUnitCell[i][2] = dott(unitCell[i][2], latticeVectors)
+        end
+        return cartesianUnitCell
+end
 
 
 function projectVector(vector::Array, surfaceNormal::Array)
@@ -138,6 +146,8 @@ end
 # Type for bulk crystal structural information
 struct Crystal{T<:AbstractArray}
         unitCell::T
+        cartesianUnitCell::T
+        cellVol::Float64
         latticeVectors::T
         masses::T
         𝕄::T
@@ -145,11 +155,15 @@ struct Crystal{T<:AbstractArray}
         neighbors::Dict
 
         function Crystal(unitCell, latticeVectors, threshold)
+                cartesianUnitCell = getCartesianUnitCell(unitCell, latticeVectors)
+                cellVol = abs(dot(latticeVectors[1], cross(latticeVectors[2], latticeVectors[3])))
                 masses = getMasses(unitCell)
                 𝕄 = getMassMatrix(masses)
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
-                neighbors = getBulkNeighbors(unitCell, latticeVectors, threshold)
+                neighbors = getBulkNeighbors(cartesianUnitCell, latticeVectors, threshold)
                 new{AbstractArray}(unitCell,
+                                cartesianUnitCell,
+                                cellVol,
                                 latticeVectors,
                                 masses,
                                 𝕄,
@@ -162,6 +176,9 @@ end
 # Type for slab structural information
 struct Slab{T<:AbstractArray}
         unitCell::T
+        cartesianUnitCell::T
+        cellVol::Float64
+        meshArea::Float64
         latticeVectors::T
         surface::String
         numCells::Int
@@ -178,15 +195,22 @@ struct Slab{T<:AbstractArray}
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
                 surfaceNormal = getSurfaceNormal(hkl, reciprocalVectors)
                 adaptedLatticeVectors = getAdaptedLatticeVectors(latticeVectors, surfaceNormal)
-                meshPrimitives = adaptedLatticeVectors[1:2]
-                outOfPlanePrimitive = adaptedLatticeVectors[3]
-                meshReciprocals = getReciprocalVectors([meshPrimitives[1], meshPrimitives[2], surfaceNormal])
+                a₁, a₂, a₃ = adaptedLatticeVectors
+                meshPrimitives = [a₁, a₂]
+                cellVol = abs(dot(a₁, cross(a₂, a₃)))
+                meshArea = norm( cross(a₁, a₂) )
+                outOfPlanePrimitive = a₃
+                meshReciprocals = getReciprocalVectors([a₁, a₂, surfaceNormal])
                 unitCell, numAtomsMovedToBottom = getSlabCell(bulkUnitCell, latticeVectors, adaptedLatticeVectors, numCells)
-                neighbors = getSlabNeighbors(unitCell, adaptedLatticeVectors, threshold, numCells)
+                cartesianUnitCell = getCartesianUnitCell(unitCell, [a₁, a₂, numCells*a₃] )
+                neighbors = getSlabNeighbors(cartesianUnitCell, adaptedLatticeVectors, threshold, numCells)
                 masses = getMasses(unitCell)
                 𝕄 = getMassMatrix(masses)
                 new{AbstractArray}(
                                 unitCell,
+                                cartesianUnitCell,
+                                cellVol,
+                                meshArea,
                                 adaptedLatticeVectors,
                                 surface,
                                 numCells,
@@ -203,15 +227,15 @@ end
 
 
 
-function getBulkNeighbors(unitCell::Array, latticeVectors::Array, threshold::Real, searchWidth::Integer=2)
+function getBulkNeighbors(cartesianUnitCell::Array, latticeVectors::Array, threshold::Real, searchWidth::Int=2)
         searchRange = -searchWidth:searchWidth
         a₁, a₂, a₃ = latticeVectors
         neighbors = Dict{String, AbstractArray}()
-        for atomᵢ in unitCell
+        for atomᵢ in cartesianUnitCell
                 neighbors[atomᵢ[1]] = []
-                rᵢ = dott(atomᵢ[2], latticeVectors)
-                for atomⱼ in unitCell
-                        xⱼ = dott(atomⱼ[2], latticeVectors)
+                rᵢ = atomᵢ[2]
+                for atomⱼ in cartesianUnitCell
+                        xⱼ = atomⱼ[2]
                         for n₁ in searchRange
                                 for n₂ in searchRange
                                         for n₃ in searchRange
@@ -231,25 +255,25 @@ function getBulkNeighbors(unitCell::Array, latticeVectors::Array, threshold::Rea
 end
 
 
-function getSlabNeighbors(unitCell::Array, adaptedLatticeVectors::Array, threshold::Real, numCells::Int, searchWidth::Integer=2)
+function getSlabNeighbors(cartesianUnitCell::Array, adaptedLatticeVectors::Array, threshold::Real, numCells::Int, searchWidth::Int=2)
         searchRange = -searchWidth:searchWidth
         a₁, a₂, a₃ = adaptedLatticeVectors
         slabPrimitives = [a₁, a₂, numCells*a₃]
         neighbors = Dict{String, AbstractArray}()
-        for atomᵢ in unitCell
+        for atomᵢ in cartesianUnitCell
                 atomᵢLabel = atomᵢ[1]
                 neighbors[atomᵢLabel] = []
-                rᵢ = dott(atomᵢ[2], slabPrimitives)
-                for atomⱼ in unitCell
+                rᵢ = atomᵢ[2]
+                for atomⱼ in cartesianUnitCell
                         atomⱼLabel = atomⱼ[1]
-                        xⱼ = dott(atomⱼ[2], slabPrimitives)
+                        xⱼ = atomⱼ[2]
                         for n₁ in searchRange
                                 for n₂ in searchRange
                                         Rℓ = n₁*a₁ + n₂*a₂
                                         rⱼ = Rℓ + xⱼ
                                         bondᵢⱼ = rⱼ - rᵢ
                                         bondLength = norm(bondᵢⱼ)
-                                        if bondLength < threshold && bondLength > 0
+                                        if bondLength < threshold && bondLength > 0.0
                                                 zFractionalCoord = getSlabFractionalCoords(rⱼ, adaptedLatticeVectors, numCells)[3]
                                                 if abs(zFractionalCoord) < 1.0
                                                         push!(neighbors[atomᵢLabel], [atomⱼLabel, [bondᵢⱼ, Rℓ]])
@@ -265,8 +289,8 @@ end
 
 
 function getMassMatrix(masses::Array)
-        Nₐ = 6.02*10.0^23 # Avagadro
-        massList = [mass/Nₐ *10.0^21 for mass in masses] # atomic weights to single atom mass in 10^-24 kg = 10^-21 g
+        Nₐ = 6.02e23 # Avagadro
+        massList = [mass/Nₐ *1e21 for mass in masses] # atomic weights to single atom mass in 10^-24 kg = 10^-21 g
         diagBlocks = [repeat([1/√m], 3) for m in massList]
         diag = vcat(diagBlocks...)
         𝕄 = diagm(diag)

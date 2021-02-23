@@ -21,11 +21,9 @@ end
 
 
 # 𝕊_block method for shortRange interactions in bulk models
-function 𝕊_block(i::Int, j::Int, q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
+function 𝕊_block(i::Int, j::Int, q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array)
         e = 15.1891
-        a₁, a₂, a₃ = crystal.latticeVectors
-        vol = abs(dot(a₁, cross(a₂, a₃)))
-        scale = e^2/(2*vol)
+        scale = e^2/(2*crystal.cellVol)
         A, B = couplings[i][j]
         A *= scale
         B *= scale
@@ -66,10 +64,10 @@ function ℂ_self(i::Int, crystal::Union{Crystal, Slab}, charges::Array)
         latticeVectors = crystal.LatticeVectors
         selfTerm = zeros(3,3)
         Γ = zeros(3)
-        rᵢ = dott(crystal.unitCell[i][2], latticeVectors)
+        rᵢ = crystal.cartesianUnitCell[i][2]
         for j in eachindex(crystal.unitCell)
                 Zfactor = charges[j]/charges[i]
-                rⱼ = dott(crystal.unitCell[j][2], latticeVectors)
+                rⱼ = crystal.cartesianUnitCell[j][2]
                 Δ = rⱼ - rᵢ
                 ℂᵢⱼ = ewald(Γ, Δ, crystal, charges)
                 selfTerm -= Zfactor * ℂᵢⱼ
@@ -85,10 +83,10 @@ end
 
 
 # Construct the full contribution to the dynamical matrix from short range forces
-function 𝕊(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
-        atomsPerUnitCell = length(crystal.unitCell)
-        blocks = Matrix{Matrix}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
-        for i in 1:atomsPerUnitCell
+function 𝕊(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Int)
+        #atomsPerUnitCell = length(crystal.unitCell)
+        blocks = Matrix{Matrix}(undef, (atomDepth, atomDepth) )
+        for i in 1:atomDepth
                 for j in 1:i
                         blocks[i,j] = 𝕊_block(i, j, q, crystal, couplings)
                         if i==j
@@ -110,9 +108,9 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
         atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
         for i in 1:atomsPerUnitCell
-                rᵢ = dott(crystal.unitCell[i][2], latticeVectors)
+                rᵢ = crystal.cartesianUnitCell[i][2]
                 for j in 1:i
-                        rⱼ = dott(crystal.unitCell[j][2], latticeVectors)
+                        rⱼ = crystal.cartesianUnitCell[j][2]
                         Δ = rⱼ - rᵢ
                         ℂᵢⱼ = ewald(q, Δ, crystal, charges)
                         blocks[i,j] = ℂᵢⱼ
@@ -128,11 +126,14 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝔻(q::Vector, crystal::Union{Crystal, Slab}, couplings::Array)
-        𝕊ₖ = 𝕊(q, crystal, couplings)
+function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array; atomDepth::Int=0)
+        if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
+                atomDepth=length(crystal.unitCell) #the full atomDepth
+        end
+        𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)
         # ℂₖ = ℂ(q, crystal, charges)
 
-        𝕄 = crystal.𝕄
+        𝕄 = crystal.𝕄[1:3*atomDepth, 1:3*atomDepth]
         𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄) #+ ℂₖ
         return 𝔻ₖ
 end
