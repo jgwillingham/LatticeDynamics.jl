@@ -24,7 +24,7 @@ end
 function 𝕊_block(i::Int, j::Int, q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array)
         e = 15.1891
         a₁, a₂, a₃ = crystal.latticeVectors
-        vol = abs(dot(a₁, cross(a₂, a₃)))
+        vol = norm(dot(a₁, cross(a₂, a₃)))
         scale = e^2/(2*vol)
         A, B = couplings[i][j]
         A *= scale
@@ -66,10 +66,10 @@ function ℂ_self(i::Int, crystal::Union{Crystal, Slab}, charges::Array)
         latticeVectors = crystal.LatticeVectors
         selfTerm = zeros(3,3)
         Γ = zeros(3)
-        rᵢ = dott(crystal.unitCell[i][2], latticeVectors)
+        rᵢ = crystal.cartesianUnitCell[i][2]
         for j in eachindex(crystal.unitCell)
                 Zfactor = charges[j]/charges[i]
-                rⱼ = dott(crystal.unitCell[j][2], latticeVectors)
+                rⱼ = crystal.cartesianUnitCell[j][2]
                 Δ = rⱼ - rᵢ
                 ℂᵢⱼ = ewald(Γ, Δ, crystal, charges)
                 selfTerm -= Zfactor * ℂᵢⱼ
@@ -110,9 +110,9 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
         atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
         for i in 1:atomsPerUnitCell
-                rᵢ = dott(crystal.unitCell[i][2], latticeVectors)
+                rᵢ = crystal.cartesianUnitCell[i][2]
                 for j in 1:i
-                        rⱼ = dott(crystal.unitCell[j][2], latticeVectors)
+                        rⱼ = crystal.cartesianUnitCell[j][2]
                         Δ = rⱼ - rᵢ
                         ℂᵢⱼ = ewald(q, Δ, crystal, charges)
                         blocks[i,j] = ℂᵢⱼ

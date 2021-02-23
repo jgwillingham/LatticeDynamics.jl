@@ -124,9 +124,9 @@ end
 
 
 function getCartesianUnitCell(unitCell::Array, latticeVectors::Array)
-        cartesianUnitCell = copy(unitCell)
-        for i in eachindex(cartesianUnitCell)
-                cartesianUnitCell[i][2] = cartesianUnitCell[i][2] .* latticeVectors
+        cartesianUnitCell = deepcopy(unitCell)
+        for i in eachindex(unitCell)
+                cartesianUnitCell[i][2] = dott(unitCell[i][2], latticeVectors)
         end
         return cartesianUnitCell
 end
@@ -160,7 +160,7 @@ struct Crystal{T<:AbstractArray}
                 masses = getMasses(unitCell)
                 𝕄 = getMassMatrix(masses)
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
-                neighbors = getBulkNeighbors(unitCell, latticeVectors, threshold)
+                neighbors = getBulkNeighbors(cartesianUnitCell, latticeVectors, threshold)
                 new{AbstractArray}(unitCell,
                                 cartesianUnitCell,
                                 cellVol,
@@ -190,17 +190,18 @@ struct Slab{T<:AbstractArray}
         numAtomsMovedToBottom::Int
 
         function Slab(bulkUnitCell, latticeVectors, surface, numCells, threshold)
-                cartesianUnitCell = getCartesianUnitCell(unitCell, latticeVectors)
                 hkl = millerStringToArray(surface)
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
                 surfaceNormal = getSurfaceNormal(hkl, reciprocalVectors)
                 adaptedLatticeVectors = getAdaptedLatticeVectors(latticeVectors, surfaceNormal)
-                meshPrimitives = adaptedLatticeVectors[1:2]
-                cellVol = norm( cross(meshPrimitives[1], meshPrimitives[2]) )
-                outOfPlanePrimitive = adaptedLatticeVectors[3]
-                meshReciprocals = getReciprocalVectors([meshPrimitives[1], meshPrimitives[2], surfaceNormal])
+                a₁, a₂, a₃ = adaptedLatticeVectors
+                meshPrimitives = [a₁, a₂]
+                cellVol = norm( cross(a₁, a₂) )
+                outOfPlanePrimitive = a₃
+                meshReciprocals = getReciprocalVectors([a₁, a₂, surfaceNormal])
                 unitCell, numAtomsMovedToBottom = getSlabCell(bulkUnitCell, latticeVectors, adaptedLatticeVectors, numCells)
-                neighbors = getSlabNeighbors(unitCell, adaptedLatticeVectors, threshold, numCells)
+                cartesianUnitCell = getCartesianUnitCell(unitCell, [a₁, a₂, numCells*a₃] )
+                neighbors = getSlabNeighbors(cartesianUnitCell, adaptedLatticeVectors, threshold, numCells)
                 masses = getMasses(unitCell)
                 𝕄 = getMassMatrix(masses)
                 new{AbstractArray}(
@@ -223,15 +224,15 @@ end
 
 
 
-function getBulkNeighbors(unitCell::Array, latticeVectors::Array, threshold::Real, searchWidth::Int=2)
+function getBulkNeighbors(cartesianUnitCell::Array, latticeVectors::Array, threshold::Real, searchWidth::Int=2)
         searchRange = -searchWidth:searchWidth
         a₁, a₂, a₃ = latticeVectors
         neighbors = Dict{String, AbstractArray}()
-        for atomᵢ in unitCell
+        for atomᵢ in cartesianUnitCell
                 neighbors[atomᵢ[1]] = []
-                rᵢ = dott(atomᵢ[2], latticeVectors)
-                for atomⱼ in unitCell
-                        xⱼ = dott(atomⱼ[2], latticeVectors)
+                rᵢ = atomᵢ[2]
+                for atomⱼ in cartesianUnitCell
+                        xⱼ = atomⱼ[2]
                         for n₁ in searchRange
                                 for n₂ in searchRange
                                         for n₃ in searchRange
@@ -251,18 +252,18 @@ function getBulkNeighbors(unitCell::Array, latticeVectors::Array, threshold::Rea
 end
 
 
-function getSlabNeighbors(unitCell::Array, adaptedLatticeVectors::Array, threshold::Real, numCells::Int, searchWidth::Int=2)
+function getSlabNeighbors(cartesianUnitCell::Array, adaptedLatticeVectors::Array, threshold::Real, numCells::Int, searchWidth::Int=2)
         searchRange = -searchWidth:searchWidth
         a₁, a₂, a₃ = adaptedLatticeVectors
         slabPrimitives = [a₁, a₂, numCells*a₃]
         neighbors = Dict{String, AbstractArray}()
-        for atomᵢ in unitCell
+        for atomᵢ in cartesianUnitCell
                 atomᵢLabel = atomᵢ[1]
                 neighbors[atomᵢLabel] = []
-                rᵢ = dott(atomᵢ[2], slabPrimitives)
-                for atomⱼ in unitCell
+                rᵢ = atomᵢ[2]
+                for atomⱼ in cartesianUnitCell
                         atomⱼLabel = atomⱼ[1]
-                        xⱼ = dott(atomⱼ[2], slabPrimitives)
+                        xⱼ = atomⱼ[2]
                         for n₁ in searchRange
                                 for n₂ in searchRange
                                         Rℓ = n₁*a₁ + n₂*a₂
