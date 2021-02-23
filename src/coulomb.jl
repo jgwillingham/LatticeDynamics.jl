@@ -44,7 +44,7 @@ function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     return l
 end
 
-function qSpaceSum(q::Vector, Δ::Vector)
+function qSpaceSum(q::Vector, Δ::Vector,η::Float64, d::Int32, GList::Array{Vector})
     """
     Reciprocal lattice sum in d-dimensional Ewald summation
 
@@ -56,20 +56,19 @@ function qSpaceSum(q::Vector, Δ::Vector)
     -------
     Cfar_ij : ndarray 2D array containing the reciprocal lattice sum
     """
-    d = SELF.DIM #check where to get dim
     Cfar_ij = zeros(3,3){ComplexF64}
-    QGList = [q+G for G in SELF.GLIST] #Check where to get GList + dim q+G
+    QGList = [q+G for G in GList] 
 
-    if norm(q) > sqrt(eps())
+    if norm(q) > eps()
         push!(QGList, q)
     end
 
     for G in QGList
         norm = norm(G)
-        term = outer(G,G) / (norm^(d-1)) #check if broadcasting needed
-        term = term * exp(-1im * dot(G,Δ)) #check dot/inner
+        term = outer(G,G) / (norm^(d-1)) 
+        term = term * exp(-1.0im * dot(G,Δ)) #Check for using just im
         α = (d-1)/2
-        x = norm/(2*SELF.ETA)
+        x = norm/(2*η)
         term = term * gamma_inc(α,x^2)[2] * gamma(α) #Why the blue line?
         Cfar_ij += term
     end
@@ -104,7 +103,7 @@ function realSpaceSum(q::Vector, Δ::Vector)
         t₁ = outer(dR,dR) / norm^5
         t₁ *= (3*erfc(y) + 1/sqrt(pi) *  (6*y + 4*y^3)*exp(-y^2))
         t₂ = Matrix(I,3,3) / norm^3
-        t₂ *=  ( erfc(y) + 2*y * exp(-y^2) / sqrt(pi) )
+        t₂ *=  (erfc(y) + 2*y * exp(-y^2) / sqrt(pi))
         term = t1 - t2
         term *= exp(1im * dot(q,dR-Δ) )
         Cnear_ij += term
@@ -203,7 +202,6 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
         t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0) #Check if float casting necessary on gamma_inc
         t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg)[1]
         t = qGnorm*ϕ*(t₁+t₂)
-
         Cfar_ij = Cfar_ij + t
     end
     Cfar_ij *= -sqrt(pi)/(SELF.CELLVOL/a) #Check where to find
