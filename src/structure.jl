@@ -178,6 +178,7 @@ struct Slab{T<:AbstractArray}
         unitCell::T
         cartesianUnitCell::T
         cellVol::Float64
+        meshArea::Float64
         latticeVectors::T
         surface::String
         numCells::Int
@@ -196,7 +197,8 @@ struct Slab{T<:AbstractArray}
                 adaptedLatticeVectors = getAdaptedLatticeVectors(latticeVectors, surfaceNormal)
                 a₁, a₂, a₃ = adaptedLatticeVectors
                 meshPrimitives = [a₁, a₂]
-                cellVol = norm( cross(a₁, a₂) )
+                cellVol = abs(dot(a₁, cross(a₂, a₃)))
+                meshArea = norm( cross(a₁, a₂) )
                 outOfPlanePrimitive = a₃
                 meshReciprocals = getReciprocalVectors([a₁, a₂, surfaceNormal])
                 unitCell, numAtomsMovedToBottom = getSlabCell(bulkUnitCell, latticeVectors, adaptedLatticeVectors, numCells)
@@ -208,6 +210,7 @@ struct Slab{T<:AbstractArray}
                                 unitCell,
                                 cartesianUnitCell,
                                 cellVol,
+                                meshArea,
                                 adaptedLatticeVectors,
                                 surface,
                                 numCells,

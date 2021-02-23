@@ -23,9 +23,7 @@ end
 # 𝕊_block method for shortRange interactions in bulk models
 function 𝕊_block(i::Int, j::Int, q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array)
         e = 15.1891
-        a₁, a₂, a₃ = crystal.latticeVectors
-        vol = norm(dot(a₁, cross(a₂, a₃)))
-        scale = e^2/(2*vol)
+        scale = e^2/(2*crystal.cellVol)
         A, B = couplings[i][j]
         A *= scale
         B *= scale
