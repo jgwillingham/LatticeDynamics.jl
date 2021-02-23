@@ -60,8 +60,8 @@ end
 
 
 # ℂ_self for coulomb self interaction
-function ℂ_self(i::Int, crystal::Union{Crystal, Slab}, charges::Array)
-        latticeVectors = crystal.LatticeVectors
+function ℂ_self(i::Int, crystal::Union{Crystal, Slab}, charges::Array, GList::Array, RList::Array, η::Float64)
+        latticeVectors = crystal.latticeVectors
         selfTerm = zeros(3,3)
         Γ = zeros(3)
         rᵢ = crystal.cartesianUnitCell[i][2]
@@ -69,7 +69,7 @@ function ℂ_self(i::Int, crystal::Union{Crystal, Slab}, charges::Array)
                 Zfactor = charges[j]/charges[i]
                 rⱼ = crystal.cartesianUnitCell[j][2]
                 Δ = rⱼ - rᵢ
-                ℂᵢⱼ = ewald(Γ, Δ, crystal, charges)
+                ℂᵢⱼ = ewald(Γ, Δ, crystal, GList, RList, η)
                 selfTerm -= Zfactor * ℂᵢⱼ
         end
         return selfTerm
@@ -103,19 +103,23 @@ end
 
 
 # Constructs the full coulomb contribution to the dynamical matrix
-function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
+function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array, sumDepth::Int, η::Float64, atomDepth::Int)
         latticeVectors = crystal.latticeVectors
+
+        RList = getLatticeSummands(latticeVectors, sumDepth)
+        GList = getLatticeSummands(crystal.reciprocalVectors, sumDepth)
+
         atomsPerUnitCell = length(crystal.unitCell)
-        blocks = Matrix{Array}(undef, (atomsPerUnitCell, atomsPerUnitCell) )
-        for i in 1:atomsPerUnitCell
+        blocks = Matrix{Matrix}(undef, (atomDepth, atomDepth) )
+        for i in 1:atomDepth
                 rᵢ = crystal.cartesianUnitCell[i][2]
                 for j in 1:i
                         rⱼ = crystal.cartesianUnitCell[j][2]
                         Δ = rⱼ - rᵢ
-                        ℂᵢⱼ = ewald(q, Δ, crystal, charges)
+                        ℂᵢⱼ = ewald(q, Δ, crystal, GList, RList, η)
                         blocks[i,j] = ℂᵢⱼ
                         if i==j
-                                blocks[i,i] += ℂ_self(i, crystal, charges)
+                                blocks[i,i] += ℂ_self(i, crystal, charges, GList, RList, η)
                         else
                                 blocks[j,i] = adjoint(blocks[i,j])
                         end
@@ -126,14 +130,28 @@ function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array)
 end
 
 
-function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array; atomDepth::Int=0)
+function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Int=0)
         if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
                 atomDepth=length(crystal.unitCell) #the full atomDepth
         end
         𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)
-        # ℂₖ = ℂ(q, crystal, charges)
 
         𝕄 = crystal.𝕄[1:3*atomDepth, 1:3*atomDepth]
-        𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄) #+ ℂₖ
+        𝔻ₖ = Hermitian(𝕄*(𝕊ₖ)*𝕄)
+        return 𝔻ₖ
+end
+
+
+
+function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, charges::Array, sumDepth::Int, η::Float64, atomDepth::Int=0)
+        if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
+                atomDepth=length(crystal.unitCell) #the full atomDepth
+        end
+        𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)
+        ℂₖ = ℂ(q, crystal, charges, sumDepth, η, atomDepth)
+
+        𝕄 = crystal.𝕄[1:3*atomDepth, 1:3*atomDepth]
+        ℤ = getChargeMatrix(charges)[1:3*atomDepth, 1:3*atomDepth]
+        𝔻ₖ = Hermitian( 𝕄*(𝕊ₖ + ℤ*ℂₖ*ℤ)*𝕄 )
         return 𝔻ₖ
 end

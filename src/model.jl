@@ -45,8 +45,27 @@ function getSlabCouplingArray(slab::Slab, bulkCouplingArray::Array)
 end
 
 
+function getSlabCharges(slab::Slab, charges::Array)
+        slabCharges = repeat(charges, slab.numCells)
+        rolledSlabCharges = circshift(slabCharges, slab.numAtomsMovedToBottom)
+        return rolledSlabCharges
+end
+
+
 function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array)
         𝔻List = map(q -> 𝔻(q, crystal, couplings), qPath)
+        ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
+        fValues = map( x -> .√x./(2π), ω²Values)
+        meVDispersion = 4.13567 .*fValues # convert THz to meV
+        return meVDispersion
+end
+
+
+function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array, charges::Array, sumDepth::Int=5, η=nothing)
+        if η == nothing
+                η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
+        end
+        𝔻List = map(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
         fValues = map( x -> .√x./(2π), ω²Values)
         meVDispersion = 4.13567 .*fValues # convert THz to meV
