@@ -127,7 +127,7 @@ function ewald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array, GList::A
     """
     if η == 0.0
         η = 4*(crystal.cellVol)^(-1/3)
-    
+    end
     C_far = qSpaceSum(q, Δ, crystal, η, GList)
     C_near = realSpaceSum(q, Δ, crystal, η, RList)
     C_ij = C_far + C_near
@@ -139,12 +139,15 @@ function ewald(q::Vector, Δ::Vector, crystal::Slab, charges::Array, GList::Arra
     η = 0.0)
     """
     """
+    if η == 0.0
+        η = 4*(crystal.cellVol)^(-1/3)
+    end
     Δₚ, Δₙ = projectVector(Δ,crystal.surfaceNormal) 
 
     if norm(Δₙ) > sqrt(eps())
-        C_ij = differentPlaneSum(q,Δₚ,Δₙ)
+        C_ij = differentPlaneSum(q,Δₚ,Δₙ,GList)
     else
-        C_ij = samePlaneSumDeWette(q,Δ,crystal)
+        C_ij = samePlaneSumDeWette(q,Δ,crystal,GList,RList)
     end
     C_ij
 end
@@ -180,7 +183,7 @@ end
 
 
 # Equivalent of _DeWette in coulomb.py
-function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
+function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{Vector},RList::Array{Vector})
     """
     """
     id_xy0 = [[1 0 0;
@@ -189,31 +192,31 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
     Ec = [[1 0 0;
            0 1 0;
            0 0 -2]]
-    a = norm(SELF.LATTICE.MESHPRIMITIVES[1]) #Check where to find
+    a = norm(crystal.meshPrimitives[1]) 
     Δ = Δ/a
     q = q*a
 
-    C_ij = 2*pi/(SELF.CELLVOL/a) * Ec 
-    if norm(Δ) < sqrt(eps()) #If there are problems with the value being too high, use eps()
+    C_ij = 2*pi/(crystal.meshArea/a) * Ec 
+    if norm(Δ) < sqrt(eps()) 
         C_ij -= 2*pi/3 * Ec
     end
     Cfar_ij = zeros(3,3)
-    qGList = [q+a*G for G in SELF.GLIST] #Check where to find
+    qGList = [q+a*G for G in GList] 
 
     for qG in qGList
         qGnorm = norm(qG)
         arg = qGnorm^2 / (4*pi)
-        ϕ = exp(-1im * dot(qG,Δ))
-        t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0) #Check if float casting necessary on gamma_inc
+        ϕ = exp(-1.0im * dot(qG,Δ))
+        t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0) 
         t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg)[1]
         t = qGnorm*ϕ*(t₁+t₂)
         Cfar_ij = Cfar_ij + t
     end
-    Cfar_ij *= -sqrt(pi)/(SELF.CELLVOL/a) #Check where to find
+    Cfar_ij *= -sqrt(pi)/(crystal.meshArea/a) 
 
-    Cnear_ij = zeros(3,3){ComplexF64}
+    Cnear_ij = zeros(ComplexF64,3,3)
         
-    DeltaRList = [(R/a + Δ) for R in SELF.RLIST] #Check where to find
+    DeltaRList = [(R/a + Δ) for R in RList] 
     if norm(Δ) > sqrt(eps())
         push!(DeltaRList, Δ) # include R=0 term when non-singular
     end
@@ -225,15 +228,15 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab)
         
         t₁ = gammainc(5/2, arg) * ( 2*outer(dR, dR)/norm^2 - id_xy0 )  
         t₂ = Matrix(I,3,3)/2 * gamma_inc(3/2, arg)[1]
-        t = (ϕ/norm^3) * (t₁ + t₂) # times Ec?
+        t = (ϕ/norm^3) * (t₁ + t₂) 
 
         Cnear_ij = Cnear_ij + t
     end
     # got rid of minus sign below
     Cnear_ij *= 2/sqrt(pi)
 
-    C_ij = C_ij + (Cnear_ij + Cfar_ij)*Ec  #Originally was @ Ec, I think this works
+    C_ij = C_ij + (Cnear_ij + Cfar_ij)*Ec  
 
-    C_ij = C_ij / (a^3) # scaling
+    C_ij = C_ij / (a^3) 
     return -1*C_ij
 end
