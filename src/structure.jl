@@ -123,6 +123,14 @@ function getSlabCell(bulkUnitCell::Array, latticeVectors::Array, adaptedLatticeV
 end
 
 
+function getCartesianUnitCell(unitCell::Array, latticeVectors::Array)
+        cartesianUnitCell = copy(unitCell)
+        for i in eachindex(cartesianUnitCell)
+                cartesianUnitCell[i][2] = cartesianUnitCell[i][2] .* latticeVectors
+        end
+        return cartesianUnitCell
+end
+
 
 function projectVector(vector::Array, surfaceNormal::Array)
         n = surfaceNormal
@@ -138,6 +146,8 @@ end
 # Type for bulk crystal structural information
 struct Crystal{T<:AbstractArray}
         unitCell::T
+        cartesianUnitCell::T
+        cellVol::Float64
         latticeVectors::T
         masses::T
         𝕄::T
@@ -145,11 +155,15 @@ struct Crystal{T<:AbstractArray}
         neighbors::Dict
 
         function Crystal(unitCell, latticeVectors, threshold)
+                cartesianUnitCell = getCartesianUnitCell(unitCell, latticeVectors)
+                cellVol = abs(dot(latticeVectors[1], cross(latticeVectors[2], latticeVectors[3])))
                 masses = getMasses(unitCell)
                 𝕄 = getMassMatrix(masses)
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
                 neighbors = getBulkNeighbors(unitCell, latticeVectors, threshold)
                 new{AbstractArray}(unitCell,
+                                cartesianUnitCell,
+                                cellVol,
                                 latticeVectors,
                                 masses,
                                 𝕄,
@@ -162,6 +176,8 @@ end
 # Type for slab structural information
 struct Slab{T<:AbstractArray}
         unitCell::T
+        cartesianUnitCell::T
+        cellVol::Float64
         latticeVectors::T
         surface::String
         numCells::Int
@@ -174,11 +190,13 @@ struct Slab{T<:AbstractArray}
         numAtomsMovedToBottom::Int
 
         function Slab(bulkUnitCell, latticeVectors, surface, numCells, threshold)
+                cartesianUnitCell = getCartesianUnitCell(unitCell, latticeVectors)
                 hkl = millerStringToArray(surface)
                 reciprocalVectors = getReciprocalVectors(latticeVectors)
                 surfaceNormal = getSurfaceNormal(hkl, reciprocalVectors)
                 adaptedLatticeVectors = getAdaptedLatticeVectors(latticeVectors, surfaceNormal)
                 meshPrimitives = adaptedLatticeVectors[1:2]
+                cellVol = norm( cross(meshPrimitives[1], meshPrimitives[2]) )
                 outOfPlanePrimitive = adaptedLatticeVectors[3]
                 meshReciprocals = getReciprocalVectors([meshPrimitives[1], meshPrimitives[2], surfaceNormal])
                 unitCell, numAtomsMovedToBottom = getSlabCell(bulkUnitCell, latticeVectors, adaptedLatticeVectors, numCells)
@@ -187,6 +205,8 @@ struct Slab{T<:AbstractArray}
                 𝕄 = getMassMatrix(masses)
                 new{AbstractArray}(
                                 unitCell,
+                                cartesianUnitCell,
+                                cellVol,
                                 adaptedLatticeVectors,
                                 surface,
                                 numCells,
