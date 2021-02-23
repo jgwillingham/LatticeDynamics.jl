@@ -44,7 +44,7 @@ function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     return l
 end
 
-function qSpaceSum(q::Vector, Δ::Vector,η::Float64, d::Int32, GList::Array{Vector})
+function qSpaceSum(q::Vector, Δ::Vector,crystal::Crystal, η::Float64, GList::Array{Vector})
     """
     Reciprocal lattice sum in d-dimensional Ewald summation
 
@@ -56,7 +56,8 @@ function qSpaceSum(q::Vector, Δ::Vector,η::Float64, d::Int32, GList::Array{Vec
     -------
     Cfar_ij : ndarray 2D array containing the reciprocal lattice sum
     """
-    Cfar_ij = zeros(3,3){ComplexF64}
+    d = 3
+    Cfar_ij = zeros(ComplexF64,3,3)
     QGList = [q+G for G in GList] 
 
     if norm(q) > eps()
@@ -73,10 +74,10 @@ function qSpaceSum(q::Vector, Δ::Vector,η::Float64, d::Int32, GList::Array{Vec
         Cfar_ij += term
     end
 
-    Cfar_ij = Cfar_ij * (2*sqrt(pi))^(d-1) / SELF.CELLVOL
+    Cfar_ij = Cfar_ij * (2*sqrt(pi))^(d-1) / crystal.cellVol
 end
 
-function realSpaceSum(q::Vector, Δ::Vector)
+function realSpaceSum(q::Vector, Δ::Vector, crystal::Crystal, η::Float64, RList::Array{Vector})
     """
     Direct lattice sum in d-dimensional Ewald summation
 
@@ -88,10 +89,10 @@ function realSpaceSum(q::Vector, Δ::Vector)
     -------
     Cnear_ij : 2D array containing the direct lattice sum
     """
-    Cnear_ij = zeros(3,3){ComplexF64}
-    ΔRlist = [R+ Δ for R in SELF.RLIST]  #Check RLIST
+    Cnear_ij = zeros(ComplexF64,3,3)
+    ΔRlist = [R+ Δ for R in RList]  
 
-    if norm(Δ) > 10^(-9)
+    if norm(Δ) > sqrt(eps())
         push!(ΔRList,Δ)
     else
         Cnear_ij += Matrix(I,3,3) * 4 / (3*sqrt(pi))
@@ -99,20 +100,21 @@ function realSpaceSum(q::Vector, Δ::Vector)
 
     for dR in ΔRlist
         norm = norm(dR)
-        y = SELF.ETA * norm   #Check eta
+        y = η * norm   
         t₁ = outer(dR,dR) / norm^5
         t₁ *= (3*erfc(y) + 1/sqrt(pi) *  (6*y + 4*y^3)*exp(-y^2))
         t₂ = Matrix(I,3,3) / norm^3
         t₂ *=  (erfc(y) + 2*y * exp(-y^2) / sqrt(pi))
         term = t1 - t2
-        term *= exp(1im * dot(q,dR-Δ) )
+        term *= exp(1.0im * dot(q,dR-Δ) )
         Cnear_ij += term
     end
     return -1*Cnear_ij
 end
 
 # This is the bulk ewald method
-function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
+function ewald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array, GList::Array{Vector}, RList::Array{Vector}; 
+                η = 0.0)
     """
     Calculates the Ewald summation for the bulk crystal at wavevector `q`. 
     It returns the block of the Coulomb contribution to the dynamical
@@ -122,19 +124,22 @@ function bulkEwald(q::Vector, Δ::Vector, crystal::Crystal, charges::Array)
     -------
     C_ij : matrix
         Block i,j of Coulomb contribution to dynamical matrix.
-
     """
-    C_far = qSpaceSum(q, Δ)
-    C_near = realSpaceSum(q, Δ)
+    if η == 0.0
+        η = 4*(crystal.cellVol)^(-1/3)
+    
+    C_far = qSpaceSum(q, Δ, crystal, η, GList)
+    C_near = realSpaceSum(q, Δ, crystal, η, RList)
     C_ij = C_far + C_near
 end
 
 
 # this is the slab ewald (deWette) method
-function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
+function ewald(q::Vector, Δ::Vector, crystal::Slab, charges::Array, GList::Array{Vector}, RList::Array{Vector}; 
+    η = 0.0)
     """
     """
-    Δₚ, Δₙ = SELF.LATTICE.PROJECTVECTOR(Δ) #Check where to find
+    Δₚ, Δₙ = projectVector(Δ,crystal.surfaceNormal) 
 
     if norm(Δₙ) > sqrt(eps())
         C_ij = differentPlaneSum(q,Δₚ,Δₙ)
@@ -145,32 +150,32 @@ function slabEwald(q::Vector, Δ::Vector, crystal::Slab, charges::Array)
 end
 
 
-function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab)
+function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab, GList::Array{Vector})
     """
     """
-    C_ij = zeros(3,3){ComplexF64}
-    qGList = [q+G for G in SELF.GLIST] #Check where to find
+    C_ij = zeros(ComplexF64,3,3)
+    qGList = [q+G for G in GList] #Check where to find
 
     if norm(q) > sqrt(eps())
         push!(qGList, q)
     end
-    n = SELF.LATTICE.SURFACENORMAL #Check
-    sign = sign(n * Δnormal) 
+    n = crystal.surfaceNormal 
+    sign = sign(dot(n, Δnormal)) 
 
     for qG in qGList
         qGnorm = norm(qG)
-        Δₙ = norm(Δnormal) #Check
+        Δₙ = norm(Δnormal) 
 
         t₁ = outer(qG, qG)/qGnorm
-        t₂ = 1im * outer(qG,n)
-        t₂ += 1im*outer(n,qG)
+        t₂ = 1.0im * outer(qG,n)
+        t₂ += 1.0im*outer(n,qG)
         t₃ = qGnorm*outer(n,n)
-        t = (t₁ - sign*t₂ - t₃)*exp(-1im*dot(qG,Δparallel)) 
+        t = (t₁ - sign*t₂ - t₃)*exp(-1.0im*dot(qG,Δparallel)) 
         t = t * exp( - Δₙ * qGnorm)
         
         C_ij = C_ij + t
     end
-    C_ij = C_ij * (2*pi / SELF.CELLVOL) #Check
+    C_ij = C_ij * (2*pi / crystal.meshArea)
 end
 
 
