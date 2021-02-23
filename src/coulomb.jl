@@ -19,7 +19,7 @@ function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
     v = latticeVectors
     if length(latticeVectors) == 3
         zSumRange = sumRange
-    else if length(latticeVectors) == 2
+    elseif length(latticeVectors) == 2
         zSumRange = [0]
         push!(v,zeros(3))
     else
