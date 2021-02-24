@@ -11,7 +11,7 @@ include("model.jl")
 
 
 export Crystal, Slab, projectVector,
-       getSlabCouplingArray, buildPath,
+       getSlabCouplingArray, getSlabCharges, buildPath,
        getDispersion, getProjectedDispersion,
        plotDispersion, 𝔻,
        getSpectrum, plotSpectrum,
