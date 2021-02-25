@@ -37,8 +37,8 @@ using LatticeDynamics
 latticevectors = [a1, a2, a3]
 
 # For two atoms in the unit cell:
-atom2info = ["Element1", frac_coords1] # "Element1" is the element symbol, e.g. "Al", "C", etc.
-atom2info = ["Element2", frac_coords2]
+atom1info = ["Element1", frac_coords1] # "Element1" is the element symbol, e.g. "Al", "C", etc.
+atom2info = ["Element2", frac_coords2] # note: positions are in fractional coordinates
 unitcell = [atom1info, atom2info]
 
 # Neighbor threshold in angstroms  <- maximum extent of the short-range interactions
@@ -72,7 +72,7 @@ Right now, LatticeDynamics.jl supports two types of interactions:
 
 ### Short-Range Forces
 
-The short-range forces are modeled by a radial potential. So the interaction between atoms at positions ***r***<sub>i</sub> and ***r***<sub>j</sub> looks like *V*(|***r***<sub>i</sub> - ***r***<sub>j</sub>|). With this assumption, the force constant matrix only depends on the value of the first and second derivatives at the equilibrium separation. These two values are taken to be phenomenological parameters which we might call *A*<sub>ij</sub> and *B*<sub>ij</sub>. Packaging these as a tuple (*A*<sub>ij</sub>, *B*<sub>ij</sub>), we organize the short-range interaction parameters for every pair of atom types as 
+The short-range forces are modeled by a radial potential. So the interaction between atoms at positions ***r***<sub>i</sub> and ***r***<sub>j</sub> looks like *V*(|***r***<sub>i</sub> - ***r***<sub>j</sub>|). With this assumption, the power law fall off of the force constants is fixed and all that must be determined are the first and second derivatives evaluated at equilibrium. These two values are taken to be phenomenological parameters which we might call *A*<sub>ij</sub> and *B*<sub>ij</sub> (interpreted as radial and tangential force constants resp.). Packaging these as a tuple (*A*<sub>ij</sub>, *B*<sub>ij</sub>), we organize the short-range interaction parameters for every pair of atom types as 
 
 ```julia
 # For two atoms in the unit cell:
