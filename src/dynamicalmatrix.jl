@@ -106,8 +106,7 @@ end
 function ℂ(q::Vector, crystal::Union{Crystal, Slab}, charges::Array, sumDepth::Int, η::Float64, atomDepth::Int)
         latticeVectors = crystal.latticeVectors
 
-        RList = getLatticeSummands(latticeVectors, sumDepth)
-        GList = getLatticeSummands(crystal.reciprocalVectors, sumDepth)
+        RList, GList = getLatticeSummands(crystal, sumDepth)
 
         atomsPerUnitCell = length(crystal.unitCell)
         blocks = Matrix{Matrix}(undef, (atomDepth, atomDepth) )

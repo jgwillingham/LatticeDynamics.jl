@@ -13,36 +13,62 @@ end
 
 # Returns a list of lattice (real or reciprocal) vectors which are to be summed over.
 # Equivalent of _buildList in coulomb.py
-function getLatticeSummands(latticeVectors::Array, sumDepth::Int)
+function getLatticeSummands(crystal::Crystal, sumDepth::Int)
     "Builds and returns a list of vectors to be summed over in Ewald summation"
     sumRange = -sumDepth:1:sumDepth
-    v = latticeVectors
-    if length(latticeVectors) == 3
-        zSumRange = sumRange
-    elseif length(latticeVectors) == 2
-        zSumRange = [0]
-        push!(v,zeros(3))
-    else
-        print("latticeVectors size inappropriate")
-    end
+    a₁, a₂, a₃ = crystal.latticeVectors
+    b₁, b₂, b₃ = crystal.reciprocalVectors
 
-    vec(n1,n2,n3) = n1*v[1] + n2*v[2] + n3*v[3]
+    latVec(n1,n2,n3) = n1*a₁ + n2*a₂ + n3*a₃
+    recipVec(n1,n2,n3) = n1*b₁ + n2*b₂ + n3*b₃
 
-    l = []
+    realVecs = []
+    recipVecs = []
     for n1 in sumRange
         for n2 in sumRange
-            for n3 in zSumRange
+            for n3 in sumRange
                 if n1==n2==n3==0
                     continue
                 else
-                    V = vec(n1,n2,n3)
-                    push!(l, V)
+                    R = latVec(n1,n2,n3)
+                    push!(realVecs, R)
+                    G = recipVec(n1,n2,n3)
+                    push!(recipVecs, G)
                 end
             end
         end
     end
-    return l
+    return realVecs, recipVecs
 end
+
+
+function getLatticeSummands(slab::Slab, sumDepth::Int)
+    "Builds and returns a list of vectors to be summed over in Ewald summation"
+    sumRange = -sumDepth:1:sumDepth
+    a₁, a₂ = slab.meshPrimitives
+    b₁, b₂ = slab.meshReciprocals
+
+    latVec(n1,n2) = n1*a₁ + n2*a₂
+    recipVec(n1,n2) = n1*b₁ + n2*b₂
+
+    realVecs = []
+    recipVecs = []
+    for n1 in sumRange
+        for n2 in sumRange
+            if n1==n2==0
+                continue
+            else
+                R = latVec(n1,n2)
+                push!(realVecs, R)
+                G = recipVec(n1,n2)
+                push!(recipVecs, G)
+            end
+        end
+    end
+    return realVecs, recipVecs
+end
+
+
 
 function qSpaceSum(q::Vector, Δ::Vector, crystal::Crystal, η::Float64, GList::Array)
     d = 3
@@ -103,7 +129,7 @@ function ewald(q::Vector, Δ::Vector, crystal::Slab, GList::Array, RList::Array,
     Δₚ, Δₙ = projectVector(Δ, crystal.surfaceNormal)
 
     if norm(Δₙ) > sqrt(eps())
-        C_ij = differentPlaneSum(q, Δₚ, Δₙ, GList)
+        C_ij = differentPlaneSum(q, Δₚ, Δₙ, crystal, GList)
     else
         C_ij = samePlaneSumDeWette(q, Δ, crystal, GList, RList)
     end
@@ -111,7 +137,7 @@ function ewald(q::Vector, Δ::Vector, crystal::Slab, GList::Array, RList::Array,
 end
 
 
-function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Slab, GList::Array{Vector})
+function differentPlaneSum(q::Vector, Δparallel::Vector, Δnormal::Vector, crystal::Slab, GList::Array)
     C_ij = zeros(ComplexF64,3,3)
     qGList = [q+G for G in GList] #Check where to find
 
@@ -119,7 +145,7 @@ function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Sla
         push!(qGList, q)
     end
     n = crystal.surfaceNormal
-    sign = sign(dot(n, Δnormal))
+    sgn = sign(dot(n, Δnormal))
 
     for qG in qGList
         qGnorm = norm(qG)
@@ -129,7 +155,7 @@ function differentPlaneSum(q, Δparallel::Vector, Δnormal::Vector, crystal::Sla
         t₂ = 1.0im * outer(qG,n)
         t₂ += 1.0im*outer(n,qG)
         t₃ = qGnorm*outer(n,n)
-        t = (t₁ - sign*t₂ - t₃)*exp(-1.0im*dot(qG,Δparallel))
+        t = (t₁ - sgn*t₂ - t₃)*exp(-1.0im*dot(qG,Δparallel))
         t = t * exp( - Δₙ * qGnorm)
 
         C_ij = C_ij + t
@@ -139,7 +165,7 @@ end
 
 
 # Equivalent of _DeWette in coulomb.py
-function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{Vector}, RList::Array{Vector})
+function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array, RList::Array)
     id_xy0 = [1 0 0;
               0 1 0;
               0 0 0]
@@ -161,8 +187,8 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{
         qGnorm = norm(qG)
         arg = qGnorm^2 / (4*pi)
         ϕ = exp(-1.0im * dot(qG,Δ))
-        t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0)
-        t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg)[1]
+        t₁ = gamma(1/2, arg) * (2* outer(qG,qG)/qGnorm^2 - id_xy0)
+        t₂ = Matrix(I,3,3)/(-2) * gamma(-1/2, arg)
         t = qGnorm*ϕ*(t₁+t₂)
         Cfar_ij = Cfar_ij + t
     end
@@ -176,13 +202,13 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{
     end
 
     for dR in DeltaRList
-        norm = norm(dR)
-        arg = pi*norm^2
-        ϕ = exp(1im* dot(q,(dR-Δ) )) # only lattice vector appears in phase (questionable: Lucas)
+        dRnorm = norm(dR)
+        arg = pi*dRnorm^2
+        ϕ = exp(1.0im* dot(q,(dR-Δ) )) # only lattice vector appears in phase (questionable: Lucas)
 
-        t₁ = gammainc(5/2, arg) * ( 2*outer(dR, dR)/norm^2 - id_xy0 )
-        t₂ = Matrix(I,3,3)/2 * gamma_inc(3/2, arg)[1]
-        t = (ϕ/norm^3) * (t₁ + t₂)
+        t₁ = gamma(5/2, arg) * ( 2*outer(dR, dR)/dRnorm^2 - id_xy0 )
+        t₂ = Matrix(I,3,3)/2 * gamma(3/2, arg)
+        t = (ϕ/dRnorm^3) * (t₁ + t₂)
 
         Cnear_ij = Cnear_ij + t
     end
