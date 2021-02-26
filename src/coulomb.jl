@@ -59,7 +59,7 @@ function qSpaceSum(q::Vector, Δ::Vector, crystal::Crystal, η::Float64, GList::
         term = term * exp(-1.0im * dot(G,Δ)) #Check for using just im
         α = (d-1)/2
         x = qGnorm/(2*η)
-        term = term * gamma_inc(α,x^2)[2] * gamma(α) #Why the blue line?
+        term = term * gamma_inc(α,x^2, 0)[2] * gamma(α) #Why the blue line?
         Cfar_ij += term
     end
 
@@ -103,7 +103,7 @@ function ewald(q::Vector, Δ::Vector, crystal::Slab, GList::Array, RList::Array,
     Δₚ, Δₙ = projectVector(Δ, crystal.surfaceNormal)
 
     if norm(Δₙ) > sqrt(eps())
-        C_ij = differentPlaneSum(q, Δₚ, Δₙ, GList)
+        C_ij = differentPlaneSum(q, Δₚ, Δₙ, crystal, GList)
     else
         C_ij = samePlaneSumDeWette(q, Δ, crystal, GList, RList)
     end
@@ -161,8 +161,8 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{
         qGnorm = norm(qG)
         arg = qGnorm^2 / (4*pi)
         ϕ = exp(-1.0im * dot(qG,Δ))
-        t₁ = gamma_inc(1/2,arg)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0)
-        t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg)[1]
+        t₁ = gamma_inc(1/2,arg,0)[1] * (2* outer(qG,qG)/qGnorm^2 - id_xy0)
+        t₂ = Matrix(I,3,3)/(-2) * gamma_inc(-0.5,arg,0)[1]
         t = qGnorm*ϕ*(t₁+t₂)
         Cfar_ij = Cfar_ij + t
     end
@@ -181,7 +181,7 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array{
         ϕ = exp(1im* dot(q,(dR-Δ) )) # only lattice vector appears in phase (questionable: Lucas)
 
         t₁ = gammainc(5/2, arg) * ( 2*outer(dR, dR)/norm^2 - id_xy0 )
-        t₂ = Matrix(I,3,3)/2 * gamma_inc(3/2, arg)[1]
+        t₂ = Matrix(I,3,3)/2 * gamma_inc(3/2, arg,0)[1]
         t = (ϕ/norm^3) * (t₁ + t₂)
 
         Cnear_ij = Cnear_ij + t
