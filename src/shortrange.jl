@@ -1,8 +1,5 @@
 
 
-
-using LinearAlgebra: norm, transpose
-
 # outer product of two vectors
 function outer(v1::Vector, v2::Vector)
         return v1.*transpose(v2)

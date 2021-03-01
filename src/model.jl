@@ -1,10 +1,6 @@
 
 
 
-using LinearAlgebra: norm, eigvals
-using Plots
-
-
 function buildLine(startPoint::Vector, endPoint::Vector, pointDensity::Real)
         numPoints = pointDensity*norm(endPoint - startPoint)
         numPoints = round(Int, numPoints)
@@ -65,9 +61,9 @@ function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::A
         if η == nothing
                 η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
         end
-        𝔻List = map(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
+        𝔻List = @showprogress 1 "Making Dynamical matrices..." pmap(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
-        fValues = map( x -> .√x./(2π), ω²Values)
+        fValues = map( x -> .√Complex.(x)./(2π), ω²Values)
         meVDispersion = 4.13567 .*fValues # convert THz to meV
         return meVDispersion
 end

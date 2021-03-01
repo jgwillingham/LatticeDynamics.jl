@@ -2,6 +2,14 @@
 
 module LatticeDynamics
 
+using Distributed
+using LinearAlgebra
+using Printf
+using GSL: sf_erfc, sf_gamma_inc
+@everywhere using ProgressMeter
+using Plots
+
+
 include("structure.jl")
 include("shortrange.jl")
 include("coulomb.jl")

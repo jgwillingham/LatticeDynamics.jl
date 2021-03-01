@@ -1,9 +1,6 @@
 
 
 
-using LinearAlgebra
-using Printf
-
 # Generalized dot product for any two equal size arrays
 function dott(x::Array, y::Array)
         res = sum(x[i].*y[i] for i in eachindex(x))

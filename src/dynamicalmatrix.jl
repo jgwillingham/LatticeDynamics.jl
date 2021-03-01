@@ -1,11 +1,6 @@
 
 
 
-using LinearAlgebra: norm, dot
-
-
-
-
 function blockMatrix(blocks::Matrix{Matrix})
     blockStack = reduce(vcat, blocks)
     stackSize = size(blockStack)[1]

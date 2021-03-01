@@ -1,10 +1,5 @@
 
 
-
-using LinearAlgebra
-using ProgressMeter
-
-
 function blockSplit(matrix::Hermitian, blockSize::Int)
     matrixSize = size(matrix)[1]
     if mod(matrixSize, blockSize) != 0
