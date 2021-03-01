@@ -125,7 +125,7 @@ end
 
 
 function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, atomDepth::Int=0)
-        if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
+        if atomDepth==0 || crystal isa Crystal
                 atomDepth=length(crystal.unitCell) #the full atomDepth
         end
         𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)
@@ -138,7 +138,7 @@ end
 
 
 function 𝔻(q::Vector{Float64}, crystal::Union{Crystal, Slab}, couplings::Array, charges::Array, sumDepth::Int, η::Float64, atomDepth::Int=0)
-        if atomDepth==0 || typeof(crystal) == Crystal{AbstractArray}
+        if atomDepth==0 || crystal isa Crystal
                 atomDepth=length(crystal.unitCell) #the full atomDepth
         end
         𝕊ₖ = 𝕊(q, crystal, couplings, atomDepth)

@@ -18,9 +18,6 @@ function getLatticeSummands(crystal::Crystal, sumDepth::Int)
     a₁, a₂, a₃ = crystal.latticeVectors
     b₁, b₂, b₃ = crystal.reciprocalVectors
 
-    latVec(n1,n2,n3) = n1*a₁ + n2*a₂ + n3*a₃
-    recipVec(n1,n2,n3) = n1*b₁ + n2*b₂ + n3*b₃
-
     realVecs = []
     recipVecs = []
     for n1 in sumRange
@@ -29,9 +26,9 @@ function getLatticeSummands(crystal::Crystal, sumDepth::Int)
                 if n1==n2==n3==0
                     continue
                 else
-                    R = latVec(n1,n2,n3)
+                    R = n1*a₁ + n2*a₂ + n3*a₃
                     push!(realVecs, R)
-                    G = recipVec(n1,n2,n3)
+                    G = n1*b₁ + n2*b₂ + n3*b₃
                     push!(recipVecs, G)
                 end
             end
@@ -47,9 +44,6 @@ function getLatticeSummands(slab::Slab, sumDepth::Int)
     a₁, a₂ = slab.meshPrimitives
     b₁, b₂ = slab.meshReciprocals
 
-    latVec(n1,n2) = n1*a₁ + n2*a₂
-    recipVec(n1,n2) = n1*b₁ + n2*b₂
-
     realVecs = []
     recipVecs = []
     for n1 in sumRange
@@ -57,9 +51,9 @@ function getLatticeSummands(slab::Slab, sumDepth::Int)
             if n1==n2==0
                 continue
             else
-                R = latVec(n1,n2)
+                R = n1*a₁ + n2*a₂
                 push!(realVecs, R)
-                G = recipVec(n1,n2)
+                G = n1*b₁ + n2*b₂
                 push!(recipVecs, G)
             end
         end

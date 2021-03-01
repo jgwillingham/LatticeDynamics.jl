@@ -61,6 +61,7 @@ function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::A
         if η == nothing
                 η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
         end
+        replace!(qPath, zeros(3) => zeros(3).+1e-9)
         𝔻List = @showprogress 1 "Making Dynamical matrices..." pmap(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
         fValues = map( x -> .√Complex.(x)./(2π), ω²Values)
