@@ -57,12 +57,16 @@ function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::A
 end
 
 
-function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array, charges::Array, sumDepth::Int=5, η=nothing)
+function getDispersion(qPath::Array, crystal::Union{Crystal, Slab}, couplings::Array, charges::Array, sumDepth::Int=5, η=nothing, showProgress::Bool=true)
         if η == nothing
                 η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
         end
         replace!(qPath, zeros(3) => zeros(3).+1e-9)
-        𝔻List = @showprogress 1 "Making Dynamical matrices..." pmap(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
+        if showProgress
+                𝔻List = @showprogress 1. "Making Dynamical Matrices... " pmap(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
+        else
+                𝔻List = pmap(q -> 𝔻(q, crystal, couplings, charges, sumDepth, η), qPath)
+        end
         ω²Values = map(x -> round.(x, digits=10), map(eigvals, 𝔻List))
         fValues = map( x -> .√Complex.(x)./(2π), ω²Values)
         meVDispersion = 4.13567 .*fValues # convert THz to meV
@@ -76,6 +80,30 @@ function getProjectedDispersion(qPath::Array, qzPath::Array, crystal::Crystal, c
         for qz in qzPath
                 zLayerPath = map(q -> q + qz, qPath)
                 zLayerDisp = getDispersion(zLayerPath, crystal, couplings)
+                push!(layerDispersions, zLayerDisp)
+        end
+        # Restructure output so that it can be plotted with plotDispersion(...)
+        projectedDisp = Array{Array}(undef, length(qPath))
+        for qi in eachindex(qPath)
+            projectedDisp[qi] = []
+            for layer in eachindex(layerDispersions)
+                append!(projectedDisp[qi], layerDispersions[layer][qi])
+            end
+        end
+        return projectedDisp
+end
+
+
+function getProjectedDispersion(qPath::Array, qzPath::Array, crystal::Crystal, couplings::Array, charges::Array, sumDepth::Int=5, η=nothing)
+        if η == nothing
+                η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
+        end
+        replace!(qPath, zeros(3) => zeros(3).+1e-9)
+        layerDispersions = []
+        # Calculate dispersion for each layer to be projected onto surface BZ
+        @showprogress 1 "Projecting dispersion... " for qz in qzPath
+                zLayerPath = map(q -> q + qz, qPath)
+                zLayerDisp = getDispersion(zLayerPath, crystal, couplings, charges, sumDepth, η, false)
                 push!(layerDispersions, zLayerDisp)
         end
         # Restructure output so that it can be plotted with plotDispersion(...)
