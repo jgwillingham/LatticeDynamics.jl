@@ -129,6 +129,7 @@ end
 
 
 
+
 @inline function differentPlaneSumTerm(qG::Vector, Δnormal::Vector, surfaceNormal::Vector)
     n = surfaceNormal
     sgn = sign(dot(n, Δnormal))
@@ -188,6 +189,7 @@ function samePlaneSumDeWette(q::Vector, Δ::Vector, crystal::Slab, GList::Array,
         qGnorm = norm(qG)
         arg = qGnorm^2 / (4*pi)
         ϕ = exp(-1.0im * dot(qG,Δ))
+
         t₁ = sf_gamma_inc(1/2, arg) * (2* outer(qG,qG)/qGnorm^2 - id_xy0)
         t₂ = Matrix(I,3,3)/(-2) * sf_gamma_inc(-1/2, arg)
         t = qGnorm*ϕ*(t₁+t₂)
