@@ -1,6 +1,5 @@
 
 
-# this will contain all functions for implementing Ewald summation
 
 function getChargeMatrix(charges::Array)
     "Get charge for matrix Z, returning a diagonal
@@ -13,7 +12,6 @@ end
 @inline function RSumTerm(ΔR::Vector, η::Float64)
     ΔRnorm = norm(ΔR)
     y = η * ΔRnorm
-
     C = (outer(ΔR, ΔR) / ΔRnorm^5) * (3*sf_erfc(y) + 1/√pi *  (6*y + 4*y^3)*exp(-y^2))
     C -=  (Matrix(I,3,3)/ ΔRnorm^3) * (sf_erfc(y) + 2*y * exp(-y^2) / √π )
     return -1*C
@@ -92,17 +90,30 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(q, Δnormal, n) * exp(-im*dot(q, Δparallel))
         end
     else # atoms in same plane  --> Ewald method
+        #a = norm(a₁) # normalization factor
+        #Ec = [1. 0. 0.; 0. 1. 0.; 0. 0. -2.]
         for integers in sumList
             n1, n2 = integers
 
             Rℓ = n1*a₁ + n2*a₂
             ΔR = Δ + Rℓ
             C_ij += RSumTerm(ΔR, η) * exp(im*dot(q, Rℓ) )
+            #σ = ΔR/a
+            #C_ij += 2/√π * RSumTermDW(σ) * exp(im*dot(q, Rℓ))
 
             G = n1*b₁ + n2*b₂
             qG = q + G
             C_ij += 2π/slab.meshArea * slabGSumTerm(qG, η) * exp(-im*dot(qG, Δ))
+            #h = a*qG
+            #C_ij += -√π/ (slab.meshArea/a) * GSumTermDW(h) * exp(-im*dot(qG, Δ))
         end
+        #C_ij += 2π/(slab.meshArea/a) * I
+        #if norm(Δ) > √eps()
+        #    C_ij += 2/√π * RSumTermDW(Δ/a)
+        #else
+        #    C_ij += -2π/3 * I
+        #end
+        #C_ij *= (1/a^3) * Ec
         if norm(q) > eps()
             C_ij += 2π/slab.meshArea * slabGSumTerm(q, η) * exp(-im*dot(q, Δ))
         end
@@ -128,6 +139,30 @@ end
     C *= exp(-Δnorm*qGnorm)
     return C
 end
+
+
+@inline function RSumTermDW(σ::Vector)
+    id_xy0 = [1. 0. 0.; 0. 1. 0.; 0. 0. 0.]
+    σnorm = norm(σ)
+    x = π*σnorm^2
+    C = sf_gamma_inc(5/2, x) * ( 2*outer(σ, σ)/σnorm^2 - id_xy0 )
+    C += I/2 * sf_gamma_inc(3/2, x)
+    C *= 1/σnorm^3
+    return C
+end
+
+
+@inline function GSumTermDW(h::Vector)
+    id_xy0 = [1. 0. 0.; 0. 1. 0.; 0. 0. 0.]
+    hnorm = norm(h)
+    x = hnorm^2/(4π)
+    C  = sf_gamma_inc(1/2, x) * ( 2*outer(h, h)/hnorm^2 - id_xy0 )
+    C += -I/2 * sf_gamma_inc(-1/2, x)
+    C *= hnorm
+    return C
+end
+
+
 
 
 # Equivalent of _DeWette in coulomb.py
