@@ -55,10 +55,10 @@ function ewald(q::Vector, Δ::Vector, crystal::Crystal, sumDepth::Int, η::Float
         C_ij += 4π/crystal.cellVol * GSumTerm(qG, η) * exp(-im*dot(qG, Δ))
     end
     # handle zero terms
-    if norm(Δ) > eps()
+    if norm(Δ) > √eps()
         C_ij -= RSumTerm(Δ, η)
     end
-    if norm(q) > eps()
+    if norm(q) > √eps()
         C_ij += 4π/crystal.cellVol * GSumTerm(q, η) * exp(-im*dot(q, Δ))
     end
 
@@ -86,7 +86,7 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
             qG = q + G
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(qG, Δnormal, n) * exp(-im*dot(qG, Δparallel))
         end
-        if norm(q) > eps()
+        if norm(q) > √eps()
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(q, Δnormal, n) * exp(-im*dot(q, Δparallel))
         end
     else # atoms in same plane  --> Ewald method
@@ -99,12 +99,12 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
             qG = q + G
             C_ij += 2π/slab.meshArea * slabGSumTerm(qG, η) * exp(-im*dot(qG, Δ))
         end
-        if norm(q) > eps()
+        if norm(q) > √eps() # include G=0 term when q != 0
             C_ij += 2π/slab.meshArea * slabGSumTerm(q, η) * exp(-im*dot(q, Δ))
         end
-        if norm(Δ) > eps()
+        if norm(Δ) > √eps() # include Rℓ=0 term when Δ != 0 (i.e. not the same atom)
             C_ij += RSumTerm(Δ, η)
-        else
+        else # when |Δ|=0, replace Rℓ=0 term with 4/(3√π)I
             C_ij += 4/(3*√π) * Matrix(I,3,3)
         end
 
