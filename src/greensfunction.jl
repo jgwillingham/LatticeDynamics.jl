@@ -44,7 +44,7 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Float64=1e-9)
 end
 
 
-@inline function sanchoIterate(α::T, β::T, εˢ::T, ε::T, zI::T) where T<:Union{Array, SubArray}
+@inline function sanchoIterate!(α::T, β::T, εˢ::T, ε::T, zI::T) where T<:Union{Array, SubArray}
     g = inv(zI - ε)
     εˢ[1:end,1:end] = εˢ + α*g*β
     ε[1:end,1:end] = ε + α*g*β + β*g*α
