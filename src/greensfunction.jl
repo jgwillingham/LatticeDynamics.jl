@@ -1,10 +1,5 @@
 
 
-
-using LinearAlgebra
-using ProgressMeter
-
-
 function blockSplit(matrix::Hermitian, blockSize::Int)
     matrixSize = size(matrix)[1]
     if mod(matrixSize, blockSize) != 0
@@ -49,29 +44,28 @@ function getPrincipalLayerSize(dynamicalMatrix::Hermitian, tol::Float64=1e-9)
 end
 
 
-@inline function sanchoIterate(zI::Matrix, α::T, β::T, εˢ::T, ε::T) where T<:Union{Array, SubArray}
+@inline function sanchoIterate(α::T, β::T, εˢ::T, ε::T, zI::T) where T<:Union{Array, SubArray}
     g = inv(zI - ε)
-    newα = α*g*α
-    newβ = β*g*β
-    newεˢ = εˢ + α*g*β
-    newε = ε + α*g*β + β*g*α
-    return newα, newβ, newεˢ, newε
+    εˢ[1:end,1:end] = εˢ + α*g*β
+    ε[1:end,1:end] = ε + α*g*β + β*g*α
+    α[1:end,1:end] = α*g*α
+    β[1:end,1:end] = β*g*β
 end
 
 
 function getLDOS(ω::Float64, η::Float64, Dblocks::Array, iterNum::Int)
     # initial principal layer blocks from dynamical matrix
-    α = Dblocks[1,2]
-    β = Dblocks[2,1]
-    εˢ = Dblocks[1,1]
-    ε = Dblocks[2,2]
+    α = Matrix(Dblocks[1,2])
+    β = Matrix(Dblocks[2,1])
+    εˢ = Matrix(Dblocks[1,1])
+    ε = Matrix(Dblocks[2,2])
 
     z = ω^2 + im*η
     zI = z*Matrix(I, size(ε))
     # iterate / decimate
     counter = 1
     while counter <= iterNum
-        α, β, εˢ, ε = sanchoIterate(zI, α, β, εˢ, ε)
+        sanchoIterate!(α, β, εˢ, ε, zI)
         counter += 1
     end
     # surface Green's function:
@@ -85,7 +79,7 @@ function getLDOS(ω::Float64, η::Float64, Dblocks::Array, iterNum::Int)
 end
 
 
-function getSpectrum(qList::Array, εList::Array{Float64,1}, crystal::Slab, couplings::Array; η::Float64=1e-4, iterNum::Int=22)
+function getSpectrum(qList::Array, εList::Array{Float64,1}, crystal::Slab, couplings::Array; imag::Float64=1e-4, iterNum::Int=22)
     εToω = 2π/4.13567
     ωList = εToω .* εList
 
@@ -95,14 +89,41 @@ function getSpectrum(qList::Array, εList::Array{Float64,1}, crystal::Slab, coup
     atomDepth = 2*PLSize ÷ 3 # minimum number of atoms to consider to get necessary D blocks
 
     Aqω = Array{Array,1}(undef, length(qList))
-    DList = @showprogress 0 "Building Dynamical Matrices... " map(x -> 𝔻(x, crystal, couplings, atomDepth=atomDepth), qList)
+    DList = @showprogress 0 "Building Dynamical Matrices... " pmap(x -> 𝔻(x, crystal, couplings, atomDepth), qList)
     DBlockList = map(x-> blockSplit(x, PLSize), DList)
     @showprogress 1 "Calculating LDOS... " for i in eachindex(DBlockList)
-        energyCurve = map(x -> getLDOS(x, η, DBlockList[i], iterNum), ωList)
+        energyCurve = pmap(x -> getLDOS(x, imag, DBlockList[i], iterNum), ωList)
         Aqω[i] = energyCurve
     end
     return Aqω
 end
+
+
+function getSpectrum(qList::Array, εList::Array{Float64,1}, crystal::Slab, couplings::Array, charges::Array, sumDepth::Int=5, η=nothing; imag::Float64=1e-4, iterNum::Int=22)
+    εToω = 2π/4.13567
+    ωList = εToω .* εList
+
+    if η == nothing
+            η = 4*crystal.cellVol^(-1/3) # need to change this for slab (-1/3  --> -1/2)
+    end
+    replace!(qList, zeros(3) => zeros(3).+1e-9)
+
+    testq = rand(3)
+    testD = 𝔻(testq, crystal, couplings, charges, sumDepth, η)
+    PLSize = getPrincipalLayerSize(testD)
+    println("Principal layer: ", PLSize ÷ 3, " atoms" )
+    atomDepth = 2*PLSize ÷ 3 # minimum number of atoms to consider to get necessary D blocks
+
+    Aqω = Array{Array,1}(undef, length(qList))
+    DList = @showprogress 0 "Building Dynamical Matrices... " pmap(x -> 𝔻(x, crystal, couplings, charges, sumDepth, η, atomDepth), qList)
+    DBlockList = map(x-> blockSplit(x, PLSize), DList)
+    @showprogress 1 "Calculating LDOS... " for i in eachindex(DBlockList)
+        energyCurve = pmap(x -> getLDOS(x, imag, DBlockList[i], iterNum), ωList)
+        Aqω[i] = energyCurve
+    end
+    return Aqω
+end
+
 
 
 function plotSpectrum(Aqω::Array, εList::Array=[], qPathParts::Array=[], qLabels::Array=[]; size::Tuple=(600, 350), numyticks::Integer=5, color::Symbol=:inferno, title::String="")
