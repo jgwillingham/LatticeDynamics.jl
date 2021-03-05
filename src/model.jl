@@ -119,15 +119,15 @@ end
 
 
 
-function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[]; ylims::Array=[0.0, Inf], color::Symbol=:steelblue, size::Tuple=(600,350), title::String="")
+function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=[]; ylims::Array=[0.0, Inf], color::Symbol=:steelblue, lw::Real=1.5, size::Tuple=(600,350), title::String="")
     bands = []
 
     for i in 1:length(dispersion[1])
-        t = [set[i] for set in dispersion]
-        t = map(real, t)
-        append!(bands, [t])
+        band = [set[i] for set in dispersion]
+        band = map(real, band)
+        push!(bands, band)
     end
-    plot(bands, linewidth=2, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=size, color=color)
+    plot(bands, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=size, color=color, lw=lw)
     if length(qPathParts) > 0
             plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
             xlims!((1.0, qPathParts[end]))

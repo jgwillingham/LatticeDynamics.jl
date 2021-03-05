@@ -90,30 +90,15 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(q, Δnormal, n) * exp(-im*dot(q, Δparallel))
         end
     else # atoms in same plane  --> Ewald method
-        #a = norm(a₁) # normalization factor
-        #Ec = [1. 0. 0.; 0. 1. 0.; 0. 0. -2.]
         for integers in sumList
             n1, n2 = integers
-
             Rℓ = n1*a₁ + n2*a₂
             ΔR = Δ + Rℓ
             C_ij += RSumTerm(ΔR, η) * exp(im*dot(q, Rℓ) )
-            #σ = ΔR/a
-            #C_ij += 2/√π * RSumTermDW(σ) * exp(im*dot(q, Rℓ))
-
             G = n1*b₁ + n2*b₂
             qG = q + G
             C_ij += 2π/slab.meshArea * slabGSumTerm(qG, η) * exp(-im*dot(qG, Δ))
-            #h = a*qG
-            #C_ij += -√π/ (slab.meshArea/a) * GSumTermDW(h) * exp(-im*dot(qG, Δ))
         end
-        #C_ij += 2π/(slab.meshArea/a) * I
-        #if norm(Δ) > √eps()
-        #    C_ij += 2/√π * RSumTermDW(Δ/a)
-        #else
-        #    C_ij += -2π/3 * I
-        #end
-        #C_ij *= (1/a^3) * Ec
         if norm(q) > eps()
             C_ij += 2π/slab.meshArea * slabGSumTerm(q, η) * exp(-im*dot(q, Δ))
         end
@@ -122,6 +107,26 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
         else
             C_ij += 4/(3*√π) * Matrix(I,3,3)
         end
+
+        # DeWette calculation: REQUIRES A SLAB WITH SURFACE NORMAL IN Z DIRECTION
+
+        # a = norm(a₁) # normalization factor
+        # for integers in sumList
+        #     n1, n2 = integers
+        #     Rℓ = n1*a₁ + n2*a₂
+        #     σ = (Δ + Rℓ)/a
+        #     C_ij += -2/√π * RSumTermDW(σ) * exp(im*dot(q, Rℓ))
+        #     G = n1*b₁ + n2*b₂
+        #     h = a*(q+G)
+        #     C_ij += √π/ (slab.meshArea/a) * GSumTermDW(h) * exp(-im*dot(q+G, Δ))
+        # end
+        # C_ij += 2π/(slab.meshArea/a) * I
+        # if norm(Δ) > √eps()
+        #     C_ij += -2/√π * RSumTermDW(Δ/a)
+        # else
+        #     C_ij += 2π/3 * I
+        # end
+        # C_ij *= (1/a^3) * [1. 0. 0.; 0. 1. 0.; 0. 0. -2.] # this is the Ec matrix
     end
 
     return C_ij
