@@ -86,7 +86,7 @@ function ewald(q::Vector, Δ::Vector, slab::Slab, sumDepth::Int, η::Float64)
             qG = q + G
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(qG, Δnormal, n) * exp(-im*dot(qG, Δparallel))
         end
-        if norm(q) > √eps()
+        if norm(q) > √eps() # This G=0 term is responsible for LO-TO splitting
             C_ij += 2π/slab.meshArea * differentPlaneSumTerm(q, Δnormal, n) * exp(-im*dot(q, Δparallel))
         end
     else # atoms in same plane  --> Ewald method
@@ -141,7 +141,7 @@ end
     qGnorm = norm(qG)
     Δnorm = norm(Δnormal)
 
-    C = outer(qG, qG)/qGnorm - im*sgn*(outer(qG,n) + outer(n,qG)) - qGnorm*outer(n,n)
+    C = outer(qG, qG)/qGnorm - im*sgn*( outer(qG,n)+outer(n,qG) ) - qGnorm*outer(n,n)
     C *= exp(-Δnorm*qGnorm)
     return C
 end
