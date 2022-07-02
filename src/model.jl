@@ -135,7 +135,7 @@ function plotDispersion(dispersion::Array, qPathParts::Array=[], qLabels::Array=
         band = map(real, band)
         push!(bands, band)
     end
-    plot(bands, xticks=(qPathParts, qLabels), legend=false, xtickfont=(13), size=size, color=color, lw=lw)
+    plot(bands, xticks=(qPathParts, qLabels), legend=false, size=size, color=color, lw=lw)
     if length(qPathParts) > 0
             plot!(qPathParts, seriestype=:vline, color=:black, linealpha=0.35)
             xlims!((1.0, qPathParts[end]))
