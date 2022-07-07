@@ -22,8 +22,8 @@ function 𝕊_block(i::Int, j::Int, q::Vector{Float64}, crystal::Union{Crystal, 
         A, B = couplings[i][j]
         A *= scale
         B *= scale
-        atomᵢ = crystal.unitCell[i][1]
-        atomⱼ = crystal.unitCell[j][1]
+        atomᵢ = crystal.cartesianUnitCell[i][1]
+        atomⱼ = crystal.cartesianUnitCell[j][1]
         neighborList = crystal.neighbors[atomᵢ]
 
         𝕊ᵢⱼ = zeros(3, 3)

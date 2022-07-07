@@ -122,9 +122,26 @@ end
 
 function getCartesianUnitCell(unitCell::Array, latticeVectors::Array)
         cartesianUnitCell = deepcopy(unitCell)
+
         for i in eachindex(unitCell)
                 cartesianUnitCell[i][2] = dott(unitCell[i][2], latticeVectors)
         end
+
+        # index atom names which appear multiple times in unit cell
+        atoms = [atom[1] for atom in unitCell]
+        atom_counts = Dict([(atom, count(x->x==atom, atoms)) for atom in unique(atoms)])
+        for i in eachindex(atoms)
+            atom = atoms[i]
+            atomcount = atom_counts[atom]
+            if atomcount > 1
+                indices = findall(x->x==atom, atoms)
+                for j in 1:length(indices)
+                    idx = indices[j]
+                    cartesianUnitCell[idx][1] = atom*string(j)
+                end
+            end
+        end       
+
         return cartesianUnitCell
 end
 

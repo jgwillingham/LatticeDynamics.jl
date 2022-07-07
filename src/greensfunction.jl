@@ -137,7 +137,7 @@ function plotSpectrum(Aqω::Array, εList::Array=[], qPathParts::Array=[], qLabe
     end
 
     plottableAqω = log10.(hcat(Aqω...))
-    heatmap(plottableAqω, xticks=(qPathParts, qLabels), xtickfont=(13), yticks=yticks, size=size, color=color, title=title, ylabel="Energy (meV)")
+    heatmap(plottableAqω, xticks=(qPathParts, qLabels), yticks=yticks, size=size, color=color, title=title, ylabel="Energy (meV)")
     if length(qPathParts) > 0
         plot!(qPathParts, seriestype=:vline, color=:white, linealpha=0.35, legend=false)
     end
